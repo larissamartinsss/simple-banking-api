@@ -1,0 +1,15 @@
+with-expecter: true
+dir: "{{.InterfaceDir}}/mocks"
+outpkg: mocks
+filename: "mock_{{.InterfaceName}}.go"
+packages:
+  github.com/larissamartinsss/simple-banking-api/internal/core/ports:
+    interfaces:
+      AccountRepository:
+      TransactionRepository:
+      OperationTypeRepository:
+  github.com/larissamartinsss/simple-banking-api/internal/core/services/processors:
+    interfaces:
+      CreateAccountProcessorInterface:
+      GetAccountProcessorInterface:
+      CreateTransactionProcessorInterface:

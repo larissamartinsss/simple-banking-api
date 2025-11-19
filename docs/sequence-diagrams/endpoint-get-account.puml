@@ -1,0 +1,53 @@
+@startuml get-account-sequence
+!theme plain
+title GET /api/v1/accounts/:accountId - Get Account Flow
+
+actor Client
+participant "Chi Router" as Router
+participant "Account\nHandler" as Handler
+participant "Account\nService" as Service
+participant "Account\nRepository" as Repo
+database "SQLite\nDatabase" as DB
+
+Client -> Router: GET /api/v1/accounts/1
+activate Router
+
+Router -> Handler: GetAccount(request)
+activate Handler
+
+Handler -> Handler: Extract accountId from URL\nchi.URLParam(r, "accountId")
+
+alt Invalid account ID format
+    Handler --> Router: 400 Bad Request
+    Router --> Client: {"error": "Invalid account ID"}
+end
+
+Handler -> Service: GetAccount(ctx, accountId)
+activate Service
+
+Service -> Service: Validate accountId > 0
+
+Service -> Repo: FindByID(ctx, accountId)
+activate Repo
+Repo -> DB: SELECT * FROM accounts\nWHERE id = ?
+DB --> Repo: account or nil
+Repo --> Service: account or nil
+deactivate Repo
+
+alt Account not found
+    Service --> Handler: error: not found
+    Handler --> Router: 404 Not Found
+    Router --> Client: {"error": "account not found"}
+end
+
+Service --> Handler: account
+deactivate Service
+
+Handler -> Handler: Encode JSON response
+Handler --> Router: 200 OK + account
+deactivate Handler
+
+Router --> Client: 200 OK\n{"account_id": 1, "document_number": "12345678900"}
+deactivate Router
+
+@enduml

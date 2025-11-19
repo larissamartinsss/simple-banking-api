@@ -1,0 +1,110 @@
+@startuml create-transaction-sequence
+!theme plain
+title POST /api/v1/transactions - Create Transaction Flow (with Auto Amount Normalization)
+
+actor Client
+participant "Chi Router" as Router
+participant "Transaction\nHandler" as Handler
+participant "Transaction\nService" as Service
+participant "Account\nRepository" as AccRepo
+participant "OperationType\nRepository" as OpRepo
+participant "Transaction\nRepository" as TxRepo
+database "SQLite\nDatabase" as DB
+
+Client -> Router: POST /api/v1/transactions\n{"account_id": 1,\n"operation_type_id": 1,\n"amount": 50.0}
+activate Router
+
+Router -> Handler: CreateTransaction(request)
+activate Handler
+
+Handler -> Handler: Decode JSON body
+Handler -> Service: CreateTransaction(ctx, accountID, operationTypeID, amount)
+activate Service
+
+' Validate Account
+Service -> AccRepo: FindByID(ctx, accountID)
+activate AccRepo
+AccRepo -> DB: SELECT * FROM accounts WHERE id = ?
+DB --> AccRepo: account or nil
+AccRepo --> Service: account or nil
+deactivate AccRepo
+
+alt Account not found
+    Service --> Handler: error: account not found
+    Handler --> Router: 404 Not Found
+    Router --> Client: {"error": "account not found"}
+end
+
+' Validate Operation Type
+Service -> OpRepo: FindByID(ctx, operationTypeID)
+activate OpRepo
+OpRepo -> DB: SELECT * FROM operation_types WHERE id = ?
+DB --> OpRepo: operation type or nil
+OpRepo --> Service: operation type or nil
+deactivate OpRepo
+
+alt Invalid operation type
+    Service --> Handler: error: invalid operation type
+    Handler --> Router: 400 Bad Request
+    Router --> Client: {"error": "invalid operation type"}
+end
+
+' Create and Validate Transaction
+Service -> Service: Create Transaction entity
+Service -> Service: Validate()
+note right
+  Validation rules:
+  - account_id > 0
+  - operation_type_id: 1-4
+  - amount != 0
+end note
+
+alt Validation fails
+    Service --> Handler: validation error
+    Handler --> Router: 400 Bad Request
+    Router --> Client: {"error": "validation error"}
+end
+
+' ✨ AUTOMATIC AMOUNT NORMALIZATION ✨
+Service -> Service: NormalizeAmount(operationType)
+note right Service
+  **Amount Normalization Logic:**
+  
+  If operation is Debit (Purchase/Withdrawal):
+    amount = -|amount|
+  
+  If operation is Credit (Credit Voucher):
+    amount = |amount|
+  
+  Example: 
+  - Purchase with 50.0 → -50.0
+  - Credit with -100 → 100.0
+end note
+
+Service -> TxRepo: Create(ctx, transaction)
+activate TxRepo
+TxRepo -> DB: INSERT INTO transactions\n(account_id, operation_type_id,\namount, event_date)\nVALUES (?, ?, ?, NOW())
+note right
+  Amount is stored with
+  correct sign based on
+  operation type!
+end note
+DB --> TxRepo: transaction with ID
+TxRepo --> Service: created transaction
+deactivate TxRepo
+
+Service --> Handler: created transaction
+deactivate Service
+
+Handler -> Handler: Encode JSON response
+Handler --> Router: 201 Created + transaction
+deactivate Handler
+
+Router --> Client: 201 Created\n{"transaction_id": 1,\n"account_id": 1,\n"operation_type_id": 1,\n"amount": -50.0}
+note right
+  Notice: amount was
+  auto-converted to -50.0!
+end note
+deactivate Router
+
+@enduml

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Simple run script for the banking API
+
+echo "🚀 Starting Simple Banking API..."
+echo ""
+
+# Build the application
+echo "📦 Building application..."
+make build
+
+if [ $? -ne 0 ]; then
+    echo "❌ Build failed"
+    exit 1
+fi
+
+# Run the application
+echo ""
+echo "✨ Starting server on :8080"
+echo ""
+./bin/simple-banking-api

@@ -1,0 +1,66 @@
+@startuml create-account-sequence
+!theme plain
+title POST /api/v1/accounts - Create Account Flow
+
+actor Client
+participant "Chi Router" as Router
+participant "Account\nHandler" as Handler
+participant "Account\nService" as Service
+participant "Account\nRepository" as Repo
+database "SQLite\nDatabase" as DB
+
+Client -> Router: POST /api/v1/accounts\n{"document_number": "12345678900"}
+activate Router
+
+Router -> Handler: CreateAccount(request)
+activate Handler
+
+Handler -> Handler: Decode JSON body
+Handler -> Service: CreateAccount(ctx, documentNumber)
+activate Service
+
+Service -> Service: Create Account entity
+Service -> Service: Validate()
+note right
+  Validation rules:
+  - document_number required
+  - min length: 11 chars
+end note
+
+alt Validation fails
+    Service --> Handler: validation error
+    Handler --> Router: 400 Bad Request
+    Router --> Client: {"error": "validation error"}
+end
+
+Service -> Repo: FindByDocumentNumber(ctx, documentNumber)
+activate Repo
+Repo -> DB: SELECT * FROM accounts\nWHERE document_number = ?
+DB --> Repo: result
+Repo --> Service: existing account or nil
+deactivate Repo
+
+alt Account already exists
+    Service --> Handler: error: duplicate
+    Handler --> Router: 409 Conflict
+    Router --> Client: {"error": "account already exists"}
+end
+
+Service -> Repo: Create(ctx, account)
+activate Repo
+Repo -> DB: INSERT INTO accounts\n(document_number)\nVALUES (?)
+DB --> Repo: account with ID
+Repo --> Service: created account
+deactivate Repo
+
+Service --> Handler: created account
+deactivate Service
+
+Handler -> Handler: Encode JSON response
+Handler --> Router: 201 Created + account
+deactivate Handler
+
+Router --> Client: 201 Created\n{"account_id": 1, "document_number": "12345678900"}
+deactivate Router
+
+@enduml

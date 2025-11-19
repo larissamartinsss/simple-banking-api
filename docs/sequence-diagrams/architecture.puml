@@ -1,0 +1,73 @@
+@startuml architecture
+!define RECTANGLE class
+
+skinparam rectangle {
+    BackgroundColor<<handler>> LightBlue
+    BackgroundColor<<service>> LightGreen
+    BackgroundColor<<repository>> LightYellow
+    BackgroundColor<<database>> LightCoral
+}
+
+title Simple Banking API - Hexagonal Architecture
+
+package "HTTP Layer" {
+    rectangle "Account Handler" <<handler>> as AH
+    rectangle "Transaction Handler" <<handler>> as TH
+    rectangle "Chi Router" <<handler>> as Router
+}
+
+package "Business Logic (Core)" {
+    rectangle "Account Service" <<service>> as AS
+    rectangle "Transaction Service" <<service>> as TS
+    
+    interface "Account Repository Port" as ARP
+    interface "Transaction Repository Port" as TRP
+    interface "OperationType Repository Port" as ORP
+}
+
+package "Data Layer (Infrastructure)" {
+    rectangle "Account Repository\n(SQLite)" <<repository>> as AR
+    rectangle "Transaction Repository\n(SQLite)" <<repository>> as TR
+    rectangle "OperationType Repository\n(SQLite)" <<repository>> as OR
+    database "SQLite Database" as DB
+}
+
+' HTTP to Services
+Router --> AH
+Router --> TH
+AH --> AS : uses
+TH --> TS : uses
+
+' Services to Ports
+AS --> ARP : depends on
+TS --> TRP : depends on
+TS --> ARP : depends on
+TS --> ORP : depends on
+
+' Ports to Implementations
+ARP <|.. AR : implements
+TRP <|.. TR : implements
+ORP <|.. OR : implements
+
+' Repositories to Database
+AR --> DB
+TR --> DB
+OR --> DB
+
+note right of Router
+  RESTful endpoints:
+  - POST /api/v1/accounts
+  - GET /api/v1/accounts/:id
+  - POST /api/v1/transactions
+  - GET /api/v1/transactions/:id
+end note
+
+note right of TS
+  Business Logic:
+  - Validates input
+  - Normalizes amount
+    (auto-converts sign)
+  - Orchestrates repos
+end note
+
+@enduml

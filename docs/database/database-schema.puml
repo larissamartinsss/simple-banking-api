@@ -1,0 +1,74 @@
+@startuml database-schema
+!theme plain
+title Database Schema - Entity Relationship Diagram
+
+entity "accounts" as accounts {
+  * **id** : INTEGER <<PK, AUTO_INCREMENT>>
+  --
+  * document_number : TEXT <<UNIQUE>>
+  * created_at : DATETIME
+}
+
+entity "transactions" as transactions {
+  * **id** : INTEGER <<PK, AUTO_INCREMENT>>
+  --
+  * account_id : INTEGER <<FK>>
+  * operation_type_id : INTEGER <<FK>>
+  * amount : REAL
+  * event_date : DATETIME
+  * created_at : DATETIME
+  --
+  Indexes:
+  • idx_transactions_account_id
+  • idx_transactions_operation_type_id
+}
+
+entity "operation_types" as operation_types {
+  * **id** : INTEGER <<PK>>
+  --
+  * description : TEXT
+  * created_at : DATETIME
+  --
+  Seeded Values:
+  1 - Normal Purchase
+  2 - Purchase with installments
+  3 - Withdrawal
+  4 - Credit Voucher
+}
+
+entity "schema_migrations" as migrations {
+  * **version** : INTEGER <<PK>>
+  --
+  * description : TEXT
+  * applied_at : DATETIME
+}
+
+' Relationships
+transactions }o--|| accounts : "belongs to"
+transactions }o--|| operation_types : "has type"
+
+note right of transactions
+  **Amount Sign Convention:**
+  • Negative: Purchase, Withdrawal
+  • Positive: Credit Voucher
+  
+  **Automatic Normalization:**
+  Application layer ensures
+  correct sign based on
+  operation_type_id
+end note
+
+note bottom of accounts
+  **Constraints:**
+  • document_number is UNIQUE
+  • Index on document_number
+    for fast lookups
+end note
+
+note bottom of operation_types
+  **Static Reference Data:**
+  Pre-seeded at startup
+  IDs are fixed (1-4)
+end note
+
+@enduml

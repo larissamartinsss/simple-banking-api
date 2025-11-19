@@ -1,0 +1,128 @@
+@startuml repository-layer
+!theme plain
+title Repository Layer - Database Operations
+
+skinparam interface {
+    BackgroundColor LightBlue
+}
+skinparam class {
+    BackgroundColor LightYellow
+}
+
+package "Core - Ports (Interfaces)" {
+    interface AccountRepository {
+        +Create(ctx, account) (*Account, error)
+        +FindByID(ctx, id) (*Account, error)
+        +FindByDocumentNumber(ctx, docNum) (*Account, error)
+        +GetAll(ctx) ([]*Account, error)
+    }
+    
+    interface TransactionRepository {
+        +Create(ctx, transaction) (*Transaction, error)
+        +FindByID(ctx, id) (*Transaction, error)
+        +FindByAccountID(ctx, accountID) ([]*Transaction, error)
+        +GetAll(ctx) ([]*Transaction, error)
+    }
+    
+    interface OperationTypeRepository {
+        +FindByID(ctx, id) (*OperationType, error)
+        +GetAll(ctx) ([]*OperationType, error)
+        +Seed(ctx) error
+    }
+}
+
+package "Infrastructure - SQLite Adapters" {
+    class AccountRepositoryImpl {
+        -db *sql.DB
+        +Create(ctx, account) (*Account, error)
+        +FindByID(ctx, id) (*Account, error)
+        +FindByDocumentNumber(ctx, docNum) (*Account, error)
+        +GetAll(ctx) ([]*Account, error)
+    }
+    
+    class TransactionRepositoryImpl {
+        -db *sql.DB
+        +Create(ctx, transaction) (*Transaction, error)
+        +FindByID(ctx, id) (*Transaction, error)
+        +FindByAccountID(ctx, accountID) ([]*Transaction, error)
+        +GetAll(ctx) ([]*Transaction, error)
+        -scanTransactions(rows) ([]*Transaction, error)
+    }
+    
+    class OperationTypeRepositoryImpl {
+        -db *sql.DB
+        +FindByID(ctx, id) (*OperationType, error)
+        +GetAll(ctx) ([]*OperationType, error)
+        +Seed(ctx) error
+    }
+}
+
+database "SQLite Database" {
+    collections "Tables" {
+        card accounts {
+            **id** INTEGER PRIMARY KEY
+            document_number TEXT UNIQUE
+            created_at DATETIME
+        }
+        
+        card transactions {
+            **id** INTEGER PRIMARY KEY
+            account_id INTEGER FK
+            operation_type_id INTEGER FK
+            **amount** REAL
+            event_date DATETIME
+            created_at DATETIME
+        }
+        
+        card operation_types {
+            **id** INTEGER PRIMARY KEY
+            description TEXT
+            created_at DATETIME
+        }
+        
+        card schema_migrations {
+            **version** INTEGER PRIMARY KEY
+            description TEXT
+            applied_at DATETIME
+        }
+    }
+}
+
+' Implementations
+AccountRepository <|.. AccountRepositoryImpl : implements
+TransactionRepository <|.. TransactionRepositoryImpl : implements
+OperationTypeRepository <|.. OperationTypeRepositoryImpl : implements
+
+' Database connections
+AccountRepositoryImpl --> accounts : queries
+TransactionRepositoryImpl --> transactions : queries
+OperationTypeRepositoryImpl --> operation_types : queries
+
+' Relationships
+transactions --> accounts : FK: account_id
+transactions --> operation_types : FK: operation_type_id
+
+note top of AccountRepositoryImpl
+  **SQL Operations:**
+  • CREATE: INSERT with RETURNING
+  • READ: SELECT with indexes
+  • Duplicate check via UNIQUE constraint
+end note
+
+note top of TransactionRepositoryImpl
+  **Flexible Design:**
+  • Separate SQL constants
+  • scanTransactions() helper
+  • Easy to add JOIN queries
+  • Ready for new columns
+end note
+
+note bottom of operation_types
+  **Seeded Data:**
+  1 - Normal Purchase
+  2 - Purchase with installments
+  3 - Withdrawal
+  4 - Credit Voucher
+end note
+
+@enduml
