@@ -4,7 +4,7 @@ import "time"
 
 // OperationType represents the type of transaction operation
 type OperationType struct {
-	ID          int       `json:"operation_type_id"`
+	ID          int64     `json:"operation_type_id"`
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 }

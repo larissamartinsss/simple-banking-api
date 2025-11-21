@@ -1,10 +1,9 @@
-package repository
+package operationtype
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-
 	"github.com/larissamartinsss/simple-banking-api/internal/core/domain"
 	"github.com/larissamartinsss/simple-banking-api/internal/core/ports"
 )
@@ -20,7 +19,7 @@ func NewOperationTypeRepository(db *sql.DB) ports.OperationTypeRepository {
 }
 
 // FindByID retrieves an operation type by its ID
-func (r *OperationTypeRepository) FindByID(ctx context.Context, id int) (*domain.OperationType, error) {
+func (r *OperationTypeRepository) FindByID(ctx context.Context, id int64) (*domain.OperationType, error) {
 	var opType domain.OperationType
 
 	err := r.db.QueryRowContext(ctx, findOperationTypeByIDSQL, id).
@@ -64,7 +63,7 @@ func (r *OperationTypeRepository) GetAll(ctx context.Context) ([]*domain.Operati
 // Seed initializes the database with the predefined operation types
 func (r *OperationTypeRepository) Seed(ctx context.Context) error {
 	operationTypes := []struct {
-		ID          int
+		ID          int64
 		Description string
 	}{
 		{domain.OperationTypePurchase, "Normal Purchase"},

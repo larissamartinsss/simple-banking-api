@@ -12,7 +12,7 @@ var (
 
 // Account represents a customer account
 type Account struct {
-	ID             int       `json:"account_id"`
+	ID             int64     `json:"account_id"`
 	DocumentNumber string    `json:"document_number"`
 	CreatedAt      time.Time `json:"created_at"`
 }
@@ -42,7 +42,7 @@ type CreateAccountResponse struct {
 
 // GetAccountRequest represents the request to get an account
 type GetAccountRequest struct {
-	AccountID int `json:"account_id"`
+	AccountID int64 `json:"account_id"`
 }
 
 // GetAccountResponse represents the response after getting an account

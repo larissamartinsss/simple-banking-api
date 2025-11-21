@@ -1,4 +1,4 @@
-package repository
+package operationtype
 
 import (
 	"context"
@@ -39,7 +39,7 @@ func TestOperationTypeRepository_Seed(t *testing.T) {
 		name          string
 		setupData     func(*sql.DB)
 		wantErr       bool
-		expectedCount int
+		expectedCount int64
 	}{
 		{
 			name:          "seed empty database",
@@ -85,14 +85,14 @@ func TestOperationTypeRepository_Seed(t *testing.T) {
 			}
 
 			// Verify all 4 operation types were seeded
-			var count int
+			var count int64
 			db.QueryRow("SELECT COUNT(*) FROM operation_types").Scan(&count)
 			if count != tt.expectedCount {
 				t.Errorf("Seed() operation type count = %v, want %v", count, tt.expectedCount)
 			}
 
 			// Verify specific operation types exist
-			expectedTypes := map[int]string{
+			expectedTypes := map[int64]string{
 				domain.OperationTypePurchase:                 "Normal Purchase",
 				domain.OperationTypePurchaseWithInstallments: "Purchase with installments",
 				domain.OperationTypeWithdrawal:               "Withdrawal",
@@ -117,7 +117,7 @@ func TestOperationTypeRepository_Seed(t *testing.T) {
 func TestOperationTypeRepository_FindByID(t *testing.T) {
 	tests := []struct {
 		name      string
-		opTypeID  int
+		opTypeID  int64
 		setupData func(*sql.DB)
 		wantFound bool
 		wantDesc  string
@@ -228,7 +228,7 @@ func TestOperationTypeRepository_GetAll(t *testing.T) {
 	tests := []struct {
 		name      string
 		setupData func(*sql.DB)
-		wantCount int
+		wantCount int64
 		wantErr   bool
 	}{
 		{
@@ -293,11 +293,9 @@ func TestOperationTypeRepository_GetAll(t *testing.T) {
 				return
 			}
 
-			if len(results) != tt.wantCount {
+			if int64(len(results)) != tt.wantCount {
 				t.Errorf("GetAll() count = %v, want %v", len(results), tt.wantCount)
-			}
-
-			// Validate each operation type has required fields
+			} // Validate each operation type has required fields
 			for i, opType := range results {
 				if opType.ID == 0 {
 					t.Errorf("GetAll() operation_type[%d] has zero ID", i)
@@ -316,7 +314,7 @@ func TestOperationTypeRepository_GetAll(t *testing.T) {
 func TestOperationTypeRepository_OperationTypeConstants(t *testing.T) {
 	tests := []struct {
 		name             string
-		operationID      int
+		operationID      int64
 		expectedIsDebit  bool
 		expectedIsCredit bool
 	}{

@@ -9,7 +9,7 @@ import (
 
 // Migration represents a database migration
 type Migration struct {
-	Version     int
+	Version     int64
 	Description string
 	SQL         string
 }
@@ -79,7 +79,7 @@ func RunMigrations(ctx context.Context, db *sql.DB) error {
 
 	for _, migration := range migrations {
 		// Check if migration was already applied
-		var count int
+		var count int64
 		err := db.QueryRowContext(ctx,
 			"SELECT COUNT(*) FROM schema_migrations WHERE version = ?",
 			migration.Version,

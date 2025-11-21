@@ -7,6 +7,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/larissamartinsss/simple-banking-api/internal/server/handlers"
+	customMiddleware "github.com/larissamartinsss/simple-banking-api/internal/server/middleware"
 )
 
 type Server struct {
@@ -14,14 +15,16 @@ type Server struct {
 	createAccountHandler     *handlers.CreateAccountHandler
 	getAccountHandler        *handlers.GetAccountHandler
 	createTransactionHandler *handlers.CreateTransactionHandler
+	getTransactionHandler    *handlers.GetTransactionsHandler
 }
 
-func NewServer(createAccountHandler *handlers.CreateAccountHandler, getAccountHandler *handlers.GetAccountHandler, createTransactionHandler *handlers.CreateTransactionHandler) *Server {
+func NewServer(createAccountHandler *handlers.CreateAccountHandler, getAccountHandler *handlers.GetAccountHandler, createTransactionHandler *handlers.CreateTransactionHandler, getTransactionHandler *handlers.GetTransactionsHandler) *Server {
 	s := &Server{
 		router:                   chi.NewRouter(),
 		createAccountHandler:     createAccountHandler,
 		getAccountHandler:        getAccountHandler,
 		createTransactionHandler: createTransactionHandler,
+		getTransactionHandler:    getTransactionHandler,
 	}
 
 	s.setupMiddleware()
@@ -38,6 +41,7 @@ func (s *Server) setupMiddleware() {
 	s.router.Use(middleware.Recoverer)
 	s.router.Use(middleware.Timeout(60 * time.Second))
 	s.router.Use(middleware.SetHeader("Content-Type", "application/json"))
+	s.router.Use(customMiddleware.IdempotencyMiddleware())
 }
 
 // setupRoutes configures all RESTful routes
@@ -55,6 +59,7 @@ func (s *Server) setupRoutes() {
 
 		r.Route("/transactions", func(r chi.Router) {
 			r.Post("/", s.createTransactionHandler.Handle)
+			r.Get("/accounts/{accountId}/transactions", s.getTransactionHandler.Handle)
 		})
 	})
 }

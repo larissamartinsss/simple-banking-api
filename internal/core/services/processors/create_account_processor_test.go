@@ -39,7 +39,7 @@ func TestCreateAccountProcessor_Process(t *testing.T) {
 						return acc.DocumentNumber == "12345678900"
 					})).
 					Return(&domain.Account{
-						ID:             1,
+						ID:             int64(1),
 						DocumentNumber: "12345678900",
 						CreatedAt:      time.Now(),
 					}, nil).
@@ -49,7 +49,7 @@ func TestCreateAccountProcessor_Process(t *testing.T) {
 			validateResult: func(t *testing.T, resp *domain.CreateAccountResponse) {
 				assert.NotNil(t, resp)
 				assert.NotNil(t, resp.Account)
-				assert.Equal(t, 1, resp.Account.ID)
+				assert.Equal(t, int64(1), resp.Account.ID)
 				assert.Equal(t, "12345678900", resp.Account.DocumentNumber)
 				assert.False(t, resp.Account.CreatedAt.IsZero())
 			},
@@ -64,7 +64,7 @@ func TestCreateAccountProcessor_Process(t *testing.T) {
 				mockRepo.EXPECT().
 					FindByDocumentNumber(mock.Anything, "12345678900").
 					Return(&domain.Account{
-						ID:             1,
+						ID:             int64(1),
 						DocumentNumber: "12345678900",
 						CreatedAt:      time.Now(),
 					}, nil).
@@ -121,7 +121,7 @@ func TestCreateAccountProcessor_Process(t *testing.T) {
 				mockRepo.EXPECT().
 					Create(mock.Anything, mock.Anything).
 					Return(&domain.Account{
-						ID:             2,
+						ID:             int64(2),
 						DocumentNumber: "12345678901234",
 						CreatedAt:      time.Now(),
 					}, nil).

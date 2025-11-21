@@ -23,7 +23,7 @@ func (_m *MockOperationTypeRepository) EXPECT() *MockOperationTypeRepository_Exp
 }
 
 // FindByID provides a mock function with given fields: ctx, id
-func (_m *MockOperationTypeRepository) FindByID(ctx context.Context, id int) (*domain.OperationType, error) {
+func (_m *MockOperationTypeRepository) FindByID(ctx context.Context, id int64) (*domain.OperationType, error) {
 	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
@@ -32,10 +32,10 @@ func (_m *MockOperationTypeRepository) FindByID(ctx context.Context, id int) (*d
 
 	var r0 *domain.OperationType
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int) (*domain.OperationType, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (*domain.OperationType, error)); ok {
 		return rf(ctx, id)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int) *domain.OperationType); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *domain.OperationType); ok {
 		r0 = rf(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
@@ -43,7 +43,7 @@ func (_m *MockOperationTypeRepository) FindByID(ctx context.Context, id int) (*d
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
 		r1 = rf(ctx, id)
 	} else {
 		r1 = ret.Error(1)
@@ -59,14 +59,14 @@ type MockOperationTypeRepository_FindByID_Call struct {
 
 // FindByID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
+//   - id int64
 func (_e *MockOperationTypeRepository_Expecter) FindByID(ctx interface{}, id interface{}) *MockOperationTypeRepository_FindByID_Call {
 	return &MockOperationTypeRepository_FindByID_Call{Call: _e.mock.On("FindByID", ctx, id)}
 }
 
-func (_c *MockOperationTypeRepository_FindByID_Call) Run(run func(ctx context.Context, id int)) *MockOperationTypeRepository_FindByID_Call {
+func (_c *MockOperationTypeRepository_FindByID_Call) Run(run func(ctx context.Context, id int64)) *MockOperationTypeRepository_FindByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int))
+		run(args[0].(context.Context), args[1].(int64))
 	})
 	return _c
 }
@@ -76,7 +76,7 @@ func (_c *MockOperationTypeRepository_FindByID_Call) Return(_a0 *domain.Operatio
 	return _c
 }
 
-func (_c *MockOperationTypeRepository_FindByID_Call) RunAndReturn(run func(context.Context, int) (*domain.OperationType, error)) *MockOperationTypeRepository_FindByID_Call {
+func (_c *MockOperationTypeRepository_FindByID_Call) RunAndReturn(run func(context.Context, int64) (*domain.OperationType, error)) *MockOperationTypeRepository_FindByID_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -1,11 +1,10 @@
-package repository
+package accounts
 
 import (
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
-
 	"github.com/larissamartinsss/simple-banking-api/internal/core/domain"
 	"github.com/larissamartinsss/simple-banking-api/internal/core/ports"
 )
@@ -15,12 +14,10 @@ type AccountRepository struct {
 	db *sql.DB
 }
 
-// NewAccountRepository creates a new account repository
 func NewAccountRepository(db *sql.DB) ports.AccountRepository {
 	return &AccountRepository{db: db}
 }
 
-// Create creates a new account
 func (r *AccountRepository) Create(ctx context.Context, account *domain.Account) (*domain.Account, error) {
 	var result domain.Account
 
@@ -38,8 +35,7 @@ func (r *AccountRepository) Create(ctx context.Context, account *domain.Account)
 	return &result, nil
 }
 
-// FindByID retrieves an account by its ID
-func (r *AccountRepository) FindByID(ctx context.Context, id int) (*domain.Account, error) {
+func (r *AccountRepository) FindByID(ctx context.Context, id int64) (*domain.Account, error) {
 	var account domain.Account
 
 	err := r.db.QueryRowContext(ctx, findAccountByIDSQL, id).
@@ -55,7 +51,6 @@ func (r *AccountRepository) FindByID(ctx context.Context, id int) (*domain.Accou
 	return &account, nil
 }
 
-// FindByDocumentNumber retrieves an account by document number
 func (r *AccountRepository) FindByDocumentNumber(ctx context.Context, documentNumber string) (*domain.Account, error) {
 	var account domain.Account
 
@@ -72,7 +67,6 @@ func (r *AccountRepository) FindByDocumentNumber(ctx context.Context, documentNu
 	return &account, nil
 }
 
-// GetAll retrieves all accounts
 func (r *AccountRepository) GetAll(ctx context.Context) ([]*domain.Account, error) {
 	rows, err := r.db.QueryContext(ctx, getAllAccountsSQL)
 	if err != nil {

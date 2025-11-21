@@ -24,16 +24,16 @@ func TestCreateTransactionProcessor_Process(t *testing.T) {
 		{
 			name: "successful purchase transaction (negative amount)",
 			request: domain.CreateTransactionRequest{
-				AccountID:       1,
+				AccountID: int64(1),
 				OperationTypeID: domain.OperationTypePurchase,
 				Amount:          50.0,
 			},
 			setupMocks: func(mockTxRepo *mocks.MockTransactionRepository, mockAccRepo *mocks.MockAccountRepository, mockOpRepo *mocks.MockOperationTypeRepository) {
 				// Account exists
 				mockAccRepo.EXPECT().
-					FindByID(mock.Anything, 1).
+					FindByID(mock.Anything, int64(1)).
 					Return(&domain.Account{
-						ID:             1,
+						ID: int64(1),
 						DocumentNumber: "12345678900",
 						CreatedAt:      time.Now(),
 					}, nil).
@@ -41,7 +41,7 @@ func TestCreateTransactionProcessor_Process(t *testing.T) {
 
 				// Operation type exists (Purchase)
 				mockOpRepo.EXPECT().
-					FindByID(mock.Anything, domain.OperationTypePurchase).
+					FindByID(mock.Anything, int64(domain.OperationTypePurchase)).
 					Return(&domain.OperationType{
 						ID:          domain.OperationTypePurchase,
 						Description: "Normal Purchase",
@@ -52,13 +52,13 @@ func TestCreateTransactionProcessor_Process(t *testing.T) {
 				// Transaction created with negative amount
 				mockTxRepo.EXPECT().
 					Create(mock.Anything, mock.MatchedBy(func(tx *domain.Transaction) bool {
-						return tx.AccountID == 1 &&
+						return tx.AccountID == int64(1) &&
 							tx.OperationTypeID == domain.OperationTypePurchase &&
 							tx.Amount == -50.0 // Should be negative
 					})).
 					Return(&domain.Transaction{
-						ID:              1,
-						AccountID:       1,
+						ID: int64(1),
+						AccountID: int64(1),
 						OperationTypeID: domain.OperationTypePurchase,
 						Amount:          -50.0,
 						EventDate:       time.Now(),
@@ -68,27 +68,27 @@ func TestCreateTransactionProcessor_Process(t *testing.T) {
 			wantErr: false,
 			validateResult: func(t *testing.T, resp *domain.CreateTransactionResponse) {
 				assert.NotNil(t, resp)
-				assert.Equal(t, 1, resp.TransactionID)
-				assert.Equal(t, 1, resp.AccountID)
-				assert.Equal(t, domain.OperationTypePurchase, resp.OperationTypeID)
+				assert.Equal(t, int64(1), resp.TransactionID)
+				assert.Equal(t, int64(1), resp.AccountID)
+				assert.Equal(t, int64(domain.OperationTypePurchase), resp.OperationTypeID)
 				assert.Equal(t, -50.0, resp.Amount) // Normalized to negative
 			},
 		},
 		{
 			name: "successful credit voucher (positive amount)",
 			request: domain.CreateTransactionRequest{
-				AccountID:       1,
+				AccountID: int64(1),
 				OperationTypeID: domain.OperationTypeCreditVoucher,
 				Amount:          -100.0, // Sending negative but should be corrected
 			},
 			setupMocks: func(mockTxRepo *mocks.MockTransactionRepository, mockAccRepo *mocks.MockAccountRepository, mockOpRepo *mocks.MockOperationTypeRepository) {
 				mockAccRepo.EXPECT().
-					FindByID(mock.Anything, 1).
-					Return(&domain.Account{ID: 1, DocumentNumber: "12345678900"}, nil).
+					FindByID(mock.Anything, int64(1)).
+					Return(&domain.Account{ID: int64(1), DocumentNumber: "12345678900"}, nil).
 					Once()
 
 				mockOpRepo.EXPECT().
-					FindByID(mock.Anything, domain.OperationTypeCreditVoucher).
+					FindByID(mock.Anything, int64(domain.OperationTypeCreditVoucher)).
 					Return(&domain.OperationType{
 						ID:          domain.OperationTypeCreditVoucher,
 						Description: "Credit Voucher",
@@ -100,8 +100,8 @@ func TestCreateTransactionProcessor_Process(t *testing.T) {
 						return tx.Amount == 100.0 // Should be positive
 					})).
 					Return(&domain.Transaction{
-						ID:              2,
-						AccountID:       1,
+						ID: int64(2),
+						AccountID: int64(1),
 						OperationTypeID: domain.OperationTypeCreditVoucher,
 						Amount:          100.0,
 						EventDate:       time.Now(),
@@ -116,13 +116,13 @@ func TestCreateTransactionProcessor_Process(t *testing.T) {
 		{
 			name: "account not found",
 			request: domain.CreateTransactionRequest{
-				AccountID:       999,
+				AccountID: int64(999),
 				OperationTypeID: domain.OperationTypePurchase,
 				Amount:          50.0,
 			},
 			setupMocks: func(mockTxRepo *mocks.MockTransactionRepository, mockAccRepo *mocks.MockAccountRepository, mockOpRepo *mocks.MockOperationTypeRepository) {
 				mockAccRepo.EXPECT().
-					FindByID(mock.Anything, 999).
+					FindByID(mock.Anything, int64(999)).
 					Return(nil, nil).
 					Once()
 			},
@@ -132,18 +132,18 @@ func TestCreateTransactionProcessor_Process(t *testing.T) {
 		{
 			name: "invalid operation type",
 			request: domain.CreateTransactionRequest{
-				AccountID:       1,
-				OperationTypeID: 99,
+				AccountID: int64(1),
+				OperationTypeID: int64(99),
 				Amount:          50.0,
 			},
 			setupMocks: func(mockTxRepo *mocks.MockTransactionRepository, mockAccRepo *mocks.MockAccountRepository, mockOpRepo *mocks.MockOperationTypeRepository) {
 				mockAccRepo.EXPECT().
-					FindByID(mock.Anything, 1).
-					Return(&domain.Account{ID: 1, DocumentNumber: "12345678900"}, nil).
+					FindByID(mock.Anything, int64(1)).
+					Return(&domain.Account{ID: int64(1), DocumentNumber: "12345678900"}, nil).
 					Once()
 
 				mockOpRepo.EXPECT().
-					FindByID(mock.Anything, 99).
+					FindByID(mock.Anything, int64(99)).
 					Return(nil, nil).
 					Once()
 			},
@@ -153,18 +153,18 @@ func TestCreateTransactionProcessor_Process(t *testing.T) {
 		{
 			name: "withdrawal transaction (negative)",
 			request: domain.CreateTransactionRequest{
-				AccountID:       1,
+				AccountID: int64(1),
 				OperationTypeID: domain.OperationTypeWithdrawal,
 				Amount:          30.0,
 			},
 			setupMocks: func(mockTxRepo *mocks.MockTransactionRepository, mockAccRepo *mocks.MockAccountRepository, mockOpRepo *mocks.MockOperationTypeRepository) {
 				mockAccRepo.EXPECT().
-					FindByID(mock.Anything, 1).
-					Return(&domain.Account{ID: 1}, nil).
+					FindByID(mock.Anything, int64(1)).
+					Return(&domain.Account{ID: int64(1)}, nil).
 					Once()
 
 				mockOpRepo.EXPECT().
-					FindByID(mock.Anything, domain.OperationTypeWithdrawal).
+					FindByID(mock.Anything, int64(domain.OperationTypeWithdrawal)).
 					Return(&domain.OperationType{
 						ID:          domain.OperationTypeWithdrawal,
 						Description: "Withdrawal",
@@ -176,8 +176,8 @@ func TestCreateTransactionProcessor_Process(t *testing.T) {
 						return tx.Amount == -30.0 // Should be negative
 					})).
 					Return(&domain.Transaction{
-						ID:              3,
-						AccountID:       1,
+						ID: int64(3),
+						AccountID: int64(1),
 						OperationTypeID: domain.OperationTypeWithdrawal,
 						Amount:          -30.0,
 						EventDate:       time.Now(),
@@ -192,18 +192,18 @@ func TestCreateTransactionProcessor_Process(t *testing.T) {
 		{
 			name: "repository create error",
 			request: domain.CreateTransactionRequest{
-				AccountID:       1,
+				AccountID: int64(1),
 				OperationTypeID: domain.OperationTypePurchase,
 				Amount:          50.0,
 			},
 			setupMocks: func(mockTxRepo *mocks.MockTransactionRepository, mockAccRepo *mocks.MockAccountRepository, mockOpRepo *mocks.MockOperationTypeRepository) {
 				mockAccRepo.EXPECT().
-					FindByID(mock.Anything, 1).
-					Return(&domain.Account{ID: 1}, nil).
+					FindByID(mock.Anything, int64(1)).
+					Return(&domain.Account{ID: int64(1)}, nil).
 					Once()
 
 				mockOpRepo.EXPECT().
-					FindByID(mock.Anything, domain.OperationTypePurchase).
+					FindByID(mock.Anything, int64(domain.OperationTypePurchase)).
 					Return(&domain.OperationType{ID: domain.OperationTypePurchase, Description: "Normal Purchase"}, nil).
 					Once()
 

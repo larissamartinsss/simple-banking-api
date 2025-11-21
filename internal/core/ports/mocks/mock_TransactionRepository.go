@@ -82,7 +82,7 @@ func (_c *MockTransactionRepository_Create_Call) RunAndReturn(run func(context.C
 }
 
 // FindByAccountID provides a mock function with given fields: ctx, accountID
-func (_m *MockTransactionRepository) FindByAccountID(ctx context.Context, accountID int) ([]*domain.Transaction, error) {
+func (_m *MockTransactionRepository) FindByAccountID(ctx context.Context, accountID int64) ([]*domain.Transaction, error) {
 	ret := _m.Called(ctx, accountID)
 
 	if len(ret) == 0 {
@@ -91,10 +91,10 @@ func (_m *MockTransactionRepository) FindByAccountID(ctx context.Context, accoun
 
 	var r0 []*domain.Transaction
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int) ([]*domain.Transaction, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64) ([]*domain.Transaction, error)); ok {
 		return rf(ctx, accountID)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int) []*domain.Transaction); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64) []*domain.Transaction); ok {
 		r0 = rf(ctx, accountID)
 	} else {
 		if ret.Get(0) != nil {
@@ -102,7 +102,7 @@ func (_m *MockTransactionRepository) FindByAccountID(ctx context.Context, accoun
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
 		r1 = rf(ctx, accountID)
 	} else {
 		r1 = ret.Error(1)
@@ -118,14 +118,14 @@ type MockTransactionRepository_FindByAccountID_Call struct {
 
 // FindByAccountID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - accountID int
+//   - accountID int64
 func (_e *MockTransactionRepository_Expecter) FindByAccountID(ctx interface{}, accountID interface{}) *MockTransactionRepository_FindByAccountID_Call {
 	return &MockTransactionRepository_FindByAccountID_Call{Call: _e.mock.On("FindByAccountID", ctx, accountID)}
 }
 
-func (_c *MockTransactionRepository_FindByAccountID_Call) Run(run func(ctx context.Context, accountID int)) *MockTransactionRepository_FindByAccountID_Call {
+func (_c *MockTransactionRepository_FindByAccountID_Call) Run(run func(ctx context.Context, accountID int64)) *MockTransactionRepository_FindByAccountID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int))
+		run(args[0].(context.Context), args[1].(int64))
 	})
 	return _c
 }
@@ -135,13 +135,81 @@ func (_c *MockTransactionRepository_FindByAccountID_Call) Return(_a0 []*domain.T
 	return _c
 }
 
-func (_c *MockTransactionRepository_FindByAccountID_Call) RunAndReturn(run func(context.Context, int) ([]*domain.Transaction, error)) *MockTransactionRepository_FindByAccountID_Call {
+func (_c *MockTransactionRepository_FindByAccountID_Call) RunAndReturn(run func(context.Context, int64) ([]*domain.Transaction, error)) *MockTransactionRepository_FindByAccountID_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// FindByAccountIDPaginated provides a mock function with given fields: ctx, accountID, limit, offset
+func (_m *MockTransactionRepository) FindByAccountIDPaginated(ctx context.Context, accountID int64, limit int64, offset int64) ([]*domain.Transaction, int64, error) {
+	ret := _m.Called(ctx, accountID, limit, offset)
+
+	if len(ret) == 0 {
+		panic("no return value specified for FindByAccountIDPaginated")
+	}
+
+	var r0 []*domain.Transaction
+	var r1 int64
+	var r2 error
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64, int64) ([]*domain.Transaction, int64, error)); ok {
+		return rf(ctx, accountID, limit, offset)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, int64, int64, int64) []*domain.Transaction); ok {
+		r0 = rf(ctx, accountID, limit, offset)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]*domain.Transaction)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, int64, int64, int64) int64); ok {
+		r1 = rf(ctx, accountID, limit, offset)
+	} else {
+		r1 = ret.Get(1).(int64)
+	}
+
+	if rf, ok := ret.Get(2).(func(context.Context, int64, int64, int64) error); ok {
+		r2 = rf(ctx, accountID, limit, offset)
+	} else {
+		r2 = ret.Error(2)
+	}
+
+	return r0, r1, r2
+}
+
+// MockTransactionRepository_FindByAccountIDPaginated_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'FindByAccountIDPaginated'
+type MockTransactionRepository_FindByAccountIDPaginated_Call struct {
+	*mock.Call
+}
+
+// FindByAccountIDPaginated is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountID int64
+//   - limit int64
+//   - offset int64
+func (_e *MockTransactionRepository_Expecter) FindByAccountIDPaginated(ctx interface{}, accountID interface{}, limit interface{}, offset interface{}) *MockTransactionRepository_FindByAccountIDPaginated_Call {
+	return &MockTransactionRepository_FindByAccountIDPaginated_Call{Call: _e.mock.On("FindByAccountIDPaginated", ctx, accountID, limit, offset)}
+}
+
+func (_c *MockTransactionRepository_FindByAccountIDPaginated_Call) Run(run func(ctx context.Context, accountID int64, limit int64, offset int64)) *MockTransactionRepository_FindByAccountIDPaginated_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(int64), args[2].(int64), args[3].(int64))
+	})
+	return _c
+}
+
+func (_c *MockTransactionRepository_FindByAccountIDPaginated_Call) Return(_a0 []*domain.Transaction, _a1 int64, _a2 error) *MockTransactionRepository_FindByAccountIDPaginated_Call {
+	_c.Call.Return(_a0, _a1, _a2)
+	return _c
+}
+
+func (_c *MockTransactionRepository_FindByAccountIDPaginated_Call) RunAndReturn(run func(context.Context, int64, int64, int64) ([]*domain.Transaction, int64, error)) *MockTransactionRepository_FindByAccountIDPaginated_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // FindByID provides a mock function with given fields: ctx, id
-func (_m *MockTransactionRepository) FindByID(ctx context.Context, id int) (*domain.Transaction, error) {
+func (_m *MockTransactionRepository) FindByID(ctx context.Context, id int64) (*domain.Transaction, error) {
 	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
@@ -150,10 +218,10 @@ func (_m *MockTransactionRepository) FindByID(ctx context.Context, id int) (*dom
 
 	var r0 *domain.Transaction
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int) (*domain.Transaction, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (*domain.Transaction, error)); ok {
 		return rf(ctx, id)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int) *domain.Transaction); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *domain.Transaction); ok {
 		r0 = rf(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
@@ -161,7 +229,7 @@ func (_m *MockTransactionRepository) FindByID(ctx context.Context, id int) (*dom
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
 		r1 = rf(ctx, id)
 	} else {
 		r1 = ret.Error(1)
@@ -177,14 +245,14 @@ type MockTransactionRepository_FindByID_Call struct {
 
 // FindByID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
+//   - id int64
 func (_e *MockTransactionRepository_Expecter) FindByID(ctx interface{}, id interface{}) *MockTransactionRepository_FindByID_Call {
 	return &MockTransactionRepository_FindByID_Call{Call: _e.mock.On("FindByID", ctx, id)}
 }
 
-func (_c *MockTransactionRepository_FindByID_Call) Run(run func(ctx context.Context, id int)) *MockTransactionRepository_FindByID_Call {
+func (_c *MockTransactionRepository_FindByID_Call) Run(run func(ctx context.Context, id int64)) *MockTransactionRepository_FindByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int))
+		run(args[0].(context.Context), args[1].(int64))
 	})
 	return _c
 }
@@ -194,7 +262,7 @@ func (_c *MockTransactionRepository_FindByID_Call) Return(_a0 *domain.Transactio
 	return _c
 }
 
-func (_c *MockTransactionRepository_FindByID_Call) RunAndReturn(run func(context.Context, int) (*domain.Transaction, error)) *MockTransactionRepository_FindByID_Call {
+func (_c *MockTransactionRepository_FindByID_Call) RunAndReturn(run func(context.Context, int64) (*domain.Transaction, error)) *MockTransactionRepository_FindByID_Call {
 	_c.Call.Return(run)
 	return _c
 }

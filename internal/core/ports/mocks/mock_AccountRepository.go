@@ -141,7 +141,7 @@ func (_c *MockAccountRepository_FindByDocumentNumber_Call) RunAndReturn(run func
 }
 
 // FindByID provides a mock function with given fields: ctx, id
-func (_m *MockAccountRepository) FindByID(ctx context.Context, id int) (*domain.Account, error) {
+func (_m *MockAccountRepository) FindByID(ctx context.Context, id int64) (*domain.Account, error) {
 	ret := _m.Called(ctx, id)
 
 	if len(ret) == 0 {
@@ -150,10 +150,10 @@ func (_m *MockAccountRepository) FindByID(ctx context.Context, id int) (*domain.
 
 	var r0 *domain.Account
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, int) (*domain.Account, error)); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64) (*domain.Account, error)); ok {
 		return rf(ctx, id)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, int) *domain.Account); ok {
+	if rf, ok := ret.Get(0).(func(context.Context, int64) *domain.Account); ok {
 		r0 = rf(ctx, id)
 	} else {
 		if ret.Get(0) != nil {
@@ -161,7 +161,7 @@ func (_m *MockAccountRepository) FindByID(ctx context.Context, id int) (*domain.
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, int) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, int64) error); ok {
 		r1 = rf(ctx, id)
 	} else {
 		r1 = ret.Error(1)
@@ -177,14 +177,14 @@ type MockAccountRepository_FindByID_Call struct {
 
 // FindByID is a helper method to define mock.On call
 //   - ctx context.Context
-//   - id int
+//   - id int64
 func (_e *MockAccountRepository_Expecter) FindByID(ctx interface{}, id interface{}) *MockAccountRepository_FindByID_Call {
 	return &MockAccountRepository_FindByID_Call{Call: _e.mock.On("FindByID", ctx, id)}
 }
 
-func (_c *MockAccountRepository_FindByID_Call) Run(run func(ctx context.Context, id int)) *MockAccountRepository_FindByID_Call {
+func (_c *MockAccountRepository_FindByID_Call) Run(run func(ctx context.Context, id int64)) *MockAccountRepository_FindByID_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].(int))
+		run(args[0].(context.Context), args[1].(int64))
 	})
 	return _c
 }
@@ -194,7 +194,7 @@ func (_c *MockAccountRepository_FindByID_Call) Return(_a0 *domain.Account, _a1 e
 	return _c
 }
 
-func (_c *MockAccountRepository_FindByID_Call) RunAndReturn(run func(context.Context, int) (*domain.Account, error)) *MockAccountRepository_FindByID_Call {
+func (_c *MockAccountRepository_FindByID_Call) RunAndReturn(run func(context.Context, int64) (*domain.Account, error)) *MockAccountRepository_FindByID_Call {
 	_c.Call.Return(run)
 	return _c
 }

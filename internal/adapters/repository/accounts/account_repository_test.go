@@ -1,4 +1,4 @@
-package repository
+package accounts
 
 import (
 	"context"
@@ -130,18 +130,18 @@ func TestAccountRepository_Create(t *testing.T) {
 func TestAccountRepository_FindByID(t *testing.T) {
 	tests := []struct {
 		name      string
-		accountID int
-		setupData func(*sql.DB) int // returns the ID to search for
+		accountID int64
+		setupData func(*sql.DB) int64 // returns the ID to search for
 		wantFound bool
 		wantErr   bool
 	}{
 		{
 			name:      "find existing account",
 			accountID: 0, // will be set by setupData
-			setupData: func(db *sql.DB) int {
+			setupData: func(db *sql.DB) int64 {
 				result, _ := db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "12345678900")
 				id, _ := result.LastInsertId()
-				return int(id)
+				return int64(id)
 			},
 			wantFound: true,
 			wantErr:   false,
@@ -149,7 +149,7 @@ func TestAccountRepository_FindByID(t *testing.T) {
 		{
 			name:      "account not found",
 			accountID: 999,
-			setupData: func(db *sql.DB) int {
+			setupData: func(db *sql.DB) int64 {
 				return 999
 			},
 			wantFound: false,
@@ -158,11 +158,11 @@ func TestAccountRepository_FindByID(t *testing.T) {
 		{
 			name:      "find account by ID 1",
 			accountID: 0,
-			setupData: func(db *sql.DB) int {
+			setupData: func(db *sql.DB) int64 {
 				db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "11111111111")
 				result, _ := db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "22222222222")
 				id, _ := result.LastInsertId()
-				return int(id)
+				return int64(id)
 			},
 			wantFound: true,
 			wantErr:   false,
@@ -296,7 +296,7 @@ func TestAccountRepository_GetAll(t *testing.T) {
 	tests := []struct {
 		name      string
 		setupData func(*sql.DB)
-		wantCount int
+		wantCount int64
 		wantErr   bool
 	}{
 		{
@@ -360,11 +360,9 @@ func TestAccountRepository_GetAll(t *testing.T) {
 				return
 			}
 
-			if len(results) != tt.wantCount {
+			if int64(len(results)) != tt.wantCount {
 				t.Errorf("GetAll() count = %v, want %v", len(results), tt.wantCount)
-			}
-
-			// Validate each account has required fields
+			} // Validate each account has required fields
 			for i, account := range results {
 				if account.ID == 0 {
 					t.Errorf("GetAll() account[%d] has zero ID", i)

@@ -30,7 +30,7 @@ func (h *GetAccountHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	// Validate request
 	req := domain.GetAccountRequest{
-		AccountID: accountID,
+		AccountID: int64(accountID),
 	}
 	if err := h.validateRequest(req); err != nil {
 		respondWithError(w, http.StatusBadRequest, err.Error())

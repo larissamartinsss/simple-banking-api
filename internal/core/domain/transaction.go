@@ -8,27 +8,48 @@ import (
 
 // Transaction represents a financial transaction
 type Transaction struct {
-	ID              int       `json:"transaction_id"`
-	AccountID       int       `json:"account_id"`
-	OperationTypeID int       `json:"operation_type_id"`
+	ID              int64     `json:"transaction_id"`
+	AccountID       int64     `json:"account_id"`
+	OperationTypeID int64     `json:"operation_type_id"`
 	Amount          float64   `json:"amount"`
 	EventDate       time.Time `json:"event_date"`
 }
 
 // CreateTransactionRequest represents the input for creating a transaction
 type CreateTransactionRequest struct {
-	AccountID       int     `json:"account_id"`
-	OperationTypeID int     `json:"operation_type_id"`
+	AccountID       int64   `json:"account_id"`
+	OperationTypeID int64   `json:"operation_type_id"`
 	Amount          float64 `json:"amount"`
 }
 
 // CreateTransactionResponse represents the output after creating a transaction
 type CreateTransactionResponse struct {
-	TransactionID   int       `json:"transaction_id"`
-	AccountID       int       `json:"account_id"`
-	OperationTypeID int       `json:"operation_type_id"`
+	TransactionID   int64     `json:"transaction_id"`
+	AccountID       int64     `json:"account_id"`
+	OperationTypeID int64     `json:"operation_type_id"`
 	Amount          float64   `json:"amount"`
 	EventDate       time.Time `json:"event_date"`
+}
+
+// GetTransactionsRequest represents the request to get transactions with pagination
+type GetTransactionsRequest struct {
+	AccountID int64 `json:"account_id"`
+	Limit     int64 `json:"limit"`
+	Offset    int64 `json:"offset"`
+}
+
+// GetTransactionsResponse represents the response with transactions and pagination info
+type GetTransactionsResponse struct {
+	Transactions []*Transaction     `json:"transactions"`
+	Pagination   PaginationMetadata `json:"pagination"`
+}
+
+// PaginationMetadata contains pagination information
+type PaginationMetadata struct {
+	Total  int64 `json:"total"`
+	Limit  int64 `json:"limit"`
+	Offset int64 `json:"offset"`
+	Pages  int64 `json:"pages"`
 }
 
 // Validation errors

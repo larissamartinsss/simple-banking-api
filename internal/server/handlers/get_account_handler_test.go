@@ -43,7 +43,7 @@ func TestGetAccountHandler_Handle(t *testing.T) {
 				var result domain.Account
 				err := json.Unmarshal(w.Body.Bytes(), &result)
 				assert.NoError(t, err)
-				assert.Equal(t, 1, result.ID)
+				assert.Equal(t, int64(1), result.ID)
 				assert.Equal(t, "12345678900", result.DocumentNumber)
 			},
 		},

@@ -48,8 +48,8 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				var result domain.CreateTransactionResponse
 				err := json.Unmarshal(w.Body.Bytes(), &result)
 				assert.NoError(t, err)
-				assert.Equal(t, 1, result.TransactionID)
-				assert.Equal(t, 1, result.AccountID)
+				assert.Equal(t, int64(1), result.TransactionID)
+				assert.Equal(t, int64(1), result.AccountID)
 				assert.Equal(t, -50.0, result.Amount)
 			},
 		},

@@ -17,3 +17,7 @@ type GetAccountProcessorInterface interface {
 type CreateTransactionProcessorInterface interface {
 	Process(ctx context.Context, req domain.CreateTransactionRequest) (*domain.CreateTransactionResponse, error)
 }
+
+type GetTransactionsProcessorInterface interface {
+	Process(ctx context.Context, req domain.GetTransactionsRequest) (*domain.GetTransactionsResponse, error)
+}

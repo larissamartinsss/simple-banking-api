@@ -1,4 +1,4 @@
-package repository
+package transactions
 
 import (
 	"context"
@@ -14,12 +14,10 @@ type TransactionRepository struct {
 	db *sql.DB
 }
 
-// NewTransactionRepository creates a new transaction repository
 func NewTransactionRepository(db *sql.DB) ports.TransactionRepository {
 	return &TransactionRepository{db: db}
 }
 
-// Create creates a new transaction
 func (r *TransactionRepository) Create(ctx context.Context, transaction *domain.Transaction) (*domain.Transaction, error) {
 	var result domain.Transaction
 
@@ -44,8 +42,7 @@ func (r *TransactionRepository) Create(ctx context.Context, transaction *domain.
 	return &result, nil
 }
 
-// FindByID retrieves a transaction by its ID
-func (r *TransactionRepository) FindByID(ctx context.Context, id int) (*domain.Transaction, error) {
+func (r *TransactionRepository) FindByID(ctx context.Context, id int64) (*domain.Transaction, error) {
 	var transaction domain.Transaction
 
 	err := r.db.QueryRowContext(ctx, findTransactionByIDSQL, id).
@@ -67,8 +64,7 @@ func (r *TransactionRepository) FindByID(ctx context.Context, id int) (*domain.T
 	return &transaction, nil
 }
 
-// FindByAccountID retrieves all transactions for a specific account
-func (r *TransactionRepository) FindByAccountID(ctx context.Context, accountID int) ([]*domain.Transaction, error) {
+func (r *TransactionRepository) FindByAccountID(ctx context.Context, accountID int64) ([]*domain.Transaction, error) {
 	rows, err := r.db.QueryContext(ctx, findTransactionsByAccountIDSQL, accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transactions: %w", err)
@@ -78,7 +74,6 @@ func (r *TransactionRepository) FindByAccountID(ctx context.Context, accountID i
 	return r.scanTransactions(rows)
 }
 
-// GetAll retrieves all transactions
 func (r *TransactionRepository) GetAll(ctx context.Context) ([]*domain.Transaction, error) {
 	rows, err := r.db.QueryContext(ctx, getAllTransactionsSQL)
 	if err != nil {
@@ -113,4 +108,26 @@ func (r *TransactionRepository) scanTransactions(rows *sql.Rows) ([]*domain.Tran
 	}
 
 	return transactions, nil
+}
+
+func (r *TransactionRepository) FindByAccountIDPaginated(ctx context.Context, accountID int64, limit int64, offset int64) ([]*domain.Transaction, int64, error) {
+	var total int64
+
+	err := r.db.QueryRowContext(ctx, countTransactionsByAccountIDSQL, accountID).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to count transactions: %w", err)
+	}
+
+	rows, err := r.db.QueryContext(ctx, findByAccountIDPaginatedSQL, accountID, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get paginated transactions: %w", err)
+	}
+	defer rows.Close()
+
+	transactions, err := r.scanTransactions(rows)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return transactions, total, nil
 }

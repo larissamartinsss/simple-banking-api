@@ -24,13 +24,13 @@ func TestGetAccountProcessor_Process(t *testing.T) {
 		{
 			name: "successfully find account",
 			request: domain.GetAccountRequest{
-				AccountID: 1,
+				AccountID: int64(1),
 			},
 			setupMocks: func(mockRepo *mocks.MockAccountRepository) {
 				mockRepo.EXPECT().
-					FindByID(mock.Anything, 1).
+					FindByID(mock.Anything, int64(1)).
 					Return(&domain.Account{
-						ID:             1,
+						ID:             int64(1),
 						DocumentNumber: "12345678900",
 						CreatedAt:      time.Now(),
 					}, nil).
@@ -40,18 +40,18 @@ func TestGetAccountProcessor_Process(t *testing.T) {
 			validateResult: func(t *testing.T, resp *domain.GetAccountResponse) {
 				assert.NotNil(t, resp)
 				assert.NotNil(t, resp.Account)
-				assert.Equal(t, 1, resp.Account.ID)
+				assert.Equal(t, int64(1), resp.Account.ID)
 				assert.Equal(t, "12345678900", resp.Account.DocumentNumber)
 			},
 		},
 		{
 			name: "account not found",
 			request: domain.GetAccountRequest{
-				AccountID: 999,
+				AccountID: int64(999),
 			},
 			setupMocks: func(mockRepo *mocks.MockAccountRepository) {
 				mockRepo.EXPECT().
-					FindByID(mock.Anything, 999).
+					FindByID(mock.Anything, int64(999)).
 					Return(nil, nil).
 					Once()
 			},
@@ -61,11 +61,11 @@ func TestGetAccountProcessor_Process(t *testing.T) {
 		{
 			name: "repository error",
 			request: domain.GetAccountRequest{
-				AccountID: 1,
+				AccountID: int64(1),
 			},
 			setupMocks: func(mockRepo *mocks.MockAccountRepository) {
 				mockRepo.EXPECT().
-					FindByID(mock.Anything, 1).
+					FindByID(mock.Anything, int64(1)).
 					Return(nil, errors.New("database connection failed")).
 					Once()
 			},
@@ -75,13 +75,13 @@ func TestGetAccountProcessor_Process(t *testing.T) {
 		{
 			name: "find account with large ID",
 			request: domain.GetAccountRequest{
-				AccountID: 99999,
+				AccountID: int64(99999),
 			},
 			setupMocks: func(mockRepo *mocks.MockAccountRepository) {
 				mockRepo.EXPECT().
-					FindByID(mock.Anything, 99999).
+					FindByID(mock.Anything, int64(99999)).
 					Return(&domain.Account{
-						ID:             99999,
+						ID:             int64(99999),
 						DocumentNumber: "99988877766",
 						CreatedAt:      time.Now(),
 					}, nil).
@@ -89,7 +89,7 @@ func TestGetAccountProcessor_Process(t *testing.T) {
 			},
 			wantErr: false,
 			validateResult: func(t *testing.T, resp *domain.GetAccountResponse) {
-				assert.Equal(t, 99999, resp.Account.ID)
+				assert.Equal(t, int64(99999), resp.Account.ID)
 				assert.Equal(t, "99988877766", resp.Account.DocumentNumber)
 			},
 		},
