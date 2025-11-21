@@ -20,6 +20,13 @@ func NewCreateTransactionHandler(processor processors.CreateTransactionProcessor
 }
 
 func (h *CreateTransactionHandler) Handle(w http.ResponseWriter, r *http.Request) {
+	// Validate required Idempotency-Key header
+	idempotencyKey := r.Header.Get("Idempotency-Key")
+	if idempotencyKey == "" {
+		respondWithError(w, http.StatusBadRequest, "Idempotency-Key header is required")
+		return
+	}
+
 	var req domain.CreateTransactionRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {

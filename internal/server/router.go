@@ -51,15 +51,15 @@ func (s *Server) setupRoutes() {
 		w.Write([]byte(`{"status":"healthy"}`))
 	})
 
-	s.router.Route("/api/v1", func(r chi.Router) {
+	s.router.Route("/v1", func(r chi.Router) {
 		r.Route("/accounts", func(r chi.Router) {
 			r.Post("/", s.createAccountHandler.Handle)
 			r.Get("/{accountId}", s.getAccountHandler.Handle)
+			r.Get("/{accountId}/transactions", s.getTransactionHandler.Handle)
 		})
 
 		r.Route("/transactions", func(r chi.Router) {
 			r.Post("/", s.createTransactionHandler.Handle)
-			r.Get("/accounts/{accountId}/transactions", s.getTransactionHandler.Handle)
 		})
 	})
 }

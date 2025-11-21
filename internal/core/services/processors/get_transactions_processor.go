@@ -23,6 +23,8 @@ func NewGetTransactionsProcessor(transactionRepo ports.TransactionRepository, ac
 }
 
 func (p *GetTransactionsProcessor) Process(ctx context.Context, req domain.GetTransactionsRequest) (*domain.GetTransactionsResponse, error) {
+	// Validate and normalize pagination parameters
+	p.validatePagination(&req)
 
 	// Validate account exists
 	account, err := p.accountRepo.FindByID(ctx, req.AccountID)
@@ -37,8 +39,6 @@ func (p *GetTransactionsProcessor) Process(ctx context.Context, req domain.GetTr
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transactions: %w", err)
 	}
-
-	p.validatePagination(req)
 
 	// Calculate number of pages
 	pages := (total + req.Limit - 1) / req.Limit
@@ -58,7 +58,7 @@ func (p *GetTransactionsProcessor) Process(ctx context.Context, req domain.GetTr
 	}, nil
 }
 
-func (p *GetTransactionsProcessor) validatePagination(req domain.GetTransactionsRequest) {
+func (p *GetTransactionsProcessor) validatePagination(req *domain.GetTransactionsRequest) {
 	// Validate pagination parameters
 	if req.Limit <= 0 || req.Limit > 100 {
 		req.Limit = 50 // Default
@@ -66,5 +66,4 @@ func (p *GetTransactionsProcessor) validatePagination(req domain.GetTransactions
 	if req.Offset < 0 {
 		req.Offset = 0 // Default
 	}
-
 }

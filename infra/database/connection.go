@@ -40,6 +40,23 @@ func NewConnection(config Config) (*sql.DB, error) {
 		return nil, fmt.Errorf("failed to enable foreign keys: %w", err)
 	}
 
+	// Enable WAL mode for better concurrency (allows reads during writes)
+	_, err = db.Exec("PRAGMA journal_mode = WAL")
+	if err != nil {
+		return nil, fmt.Errorf("failed to enable WAL mode: %w", err)
+	}
+
+	// Set busy timeout to 5 seconds (retry instead of immediate error)
+	_, err = db.Exec("PRAGMA busy_timeout = 5000")
+	if err != nil {
+		return nil, fmt.Errorf("failed to set busy timeout: %w", err)
+	}
+
+	// Configure connection pool for SQLite (single writer optimization)
+	db.SetMaxOpenConns(1)    // SQLite only supports 1 concurrent writer
+	db.SetMaxIdleConns(1)    // Keep connection alive
+	db.SetConnMaxLifetime(0) // Reuse connections indefinitely
+
 	return db, nil
 }
 

@@ -251,7 +251,7 @@ The API **automatically normalizes transaction amounts** based on the operation 
 Run the comprehensive test suite that validates all endpoints and scenarios:
 
 ```bash
-./run-local/test.sh
+./run-local/test-simple.sh
 ```
 
 This will test:

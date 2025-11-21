@@ -19,10 +19,27 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 	tests := []struct {
 		name           string
 		requestBody    interface{}
+		idempotencyKey string
 		setupMock      func(*mocks.MockCreateTransactionProcessorInterface)
 		expectedStatus int
 		validateResp   func(*testing.T, *httptest.ResponseRecorder)
 	}{
+		{
+			name: "missing idempotency key",
+			requestBody: map[string]interface{}{
+				"account_id":        1,
+				"operation_type_id": 1,
+				"amount":            50.0,
+			},
+			idempotencyKey: "", // Missing
+			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
+				// No mock expectations as validation should fail before processor
+			},
+			expectedStatus: http.StatusBadRequest,
+			validateResp: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert.Contains(t, w.Body.String(), "Idempotency-Key header is required")
+			},
+		},
 		{
 			name: "successful purchase transaction",
 			requestBody: map[string]interface{}{
@@ -30,6 +47,7 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				"operation_type_id": 1,
 				"amount":            50.0,
 			},
+			idempotencyKey: "test-key-1",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				mockProc.On("Process", mock.Anything, domain.CreateTransactionRequest{
 					AccountID:       1,
@@ -60,6 +78,7 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				"operation_type_id": 4,
 				"amount":            100.0,
 			},
+			idempotencyKey: "test-key-2",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				mockProc.On("Process", mock.Anything, domain.CreateTransactionRequest{
 					AccountID:       1,
@@ -82,8 +101,9 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 			},
 		},
 		{
-			name:        "invalid JSON body",
-			requestBody: "invalid json",
+			name:           "invalid JSON body",
+			requestBody:    "invalid json",
+			idempotencyKey: "test-key-3",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				// No mock expectations as it should fail before calling processor
 			},
@@ -99,6 +119,7 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				"operation_type_id": 1,
 				"amount":            50.0,
 			},
+			idempotencyKey: "test-key-4",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				// No mock expectations as validation should fail
 			},
@@ -114,6 +135,7 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				"operation_type_id": 1,
 				"amount":            50.0,
 			},
+			idempotencyKey: "test-key-5",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				// No mock expectations as validation should fail
 			},
@@ -129,6 +151,7 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				"operation_type_id": 99,
 				"amount":            50.0,
 			},
+			idempotencyKey: "test-key-6",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				// No mock expectations as validation should fail
 			},
@@ -144,6 +167,7 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				"operation_type_id": 0,
 				"amount":            50.0,
 			},
+			idempotencyKey: "test-key-7",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				// No mock expectations as validation should fail
 			},
@@ -159,6 +183,7 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				"operation_type_id": 1,
 				"amount":            0,
 			},
+			idempotencyKey: "test-key-8",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				// No mock expectations as validation should fail
 			},
@@ -174,6 +199,7 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				"operation_type_id": 1,
 				"amount":            50.0,
 			},
+			idempotencyKey: "test-key-9",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				mockProc.On("Process", mock.Anything, mock.Anything).
 					Return(nil, errors.New("account with id 999 does not exist")).
@@ -192,6 +218,7 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				"operation_type_id": 3,
 				"amount":            50.0,
 			},
+			idempotencyKey: "test-key-10",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				mockProc.On("Process", mock.Anything, mock.Anything).
 					Return(nil, domain.ErrInvalidOperationType).
@@ -209,6 +236,7 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 				"operation_type_id": 1,
 				"amount":            50.0,
 			},
+			idempotencyKey: "test-key-11",
 			setupMock: func(mockProc *mocks.MockCreateTransactionProcessorInterface) {
 				mockProc.On("Process", mock.Anything, mock.Anything).
 					Return(nil, errors.New("database connection failed")).
@@ -241,6 +269,9 @@ func TestCreateTransactionHandler_Handle(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodPost, "/api/v1/transactions", bytes.NewBuffer(body))
 			req.Header.Set("Content-Type", "application/json")
+			if tt.idempotencyKey != "" {
+				req.Header.Set("Idempotency-Key", tt.idempotencyKey)
+			}
 			w := httptest.NewRecorder()
 
 			// Execute
