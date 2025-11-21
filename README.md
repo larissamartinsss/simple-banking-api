@@ -534,7 +534,7 @@ make format            # Format code
 
 ## 🤝 Contributing
 
-This project is designed for learning and practice. Feel free to:
+This project is designed for a technical interview test practice and learning. Feel free to:
 - Fork and experiment
 - Add new features
 - Improve existing code
@@ -557,7 +557,6 @@ Built with ❤️ for a technical interview practice test.
 - ✅ RESTful API Design
 - ✅ Go Best Practices
 - ✅ Comprehensive Documentation
-- ✅ Production Readiness
 
 ---
 
