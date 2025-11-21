@@ -1,53 +1,73 @@
 @startuml get-account-sequence
-!theme plain
-title GET /api/v1/accounts/:accountId - Get Account Flow
+footer Simple Banking API - Hexagonal Architecture
+title <size:20>GET /api/v1/accounts/:accountId - Get Account</size>
+
+autonumber
 
 actor Client
-participant "Chi Router" as Router
-participant "Account\nHandler" as Handler
-participant "Account\nService" as Service
-participant "Account\nRepository" as Repo
-database "SQLite\nDatabase" as DB
 
-Client -> Router: GET /api/v1/accounts/1
-activate Router
+box Simple Banking API #lightblue
+    participant "GetAccountHandler" as Handler
+    participant "GetAccountProcessor" as Processor
+    participant "AccountRepository" as Repo
+    database SQLite
+end box
 
-Router -> Handler: GetAccount(request)
+Client -> Handler: [GET] /api/v1/accounts/{id}
+
 activate Handler
 
-Handler -> Handler: Extract accountId from URL\nchi.URLParam(r, "accountId")
+    Handler -> Handler: Extract accountId from URL
+    note right: chi.URLParam(r, "accountId")
+    
+    Handler -> Handler: Parse accountId to int64
+    opt #LightPink Invalid format
+        Client <-- Handler: Http 400: Invalid account ID format
+    end
 
-alt Invalid account ID format
-    Handler --> Router: 400 Bad Request
-    Router --> Client: {"error": "Invalid account ID"}
-end
+    Handler -> Handler: Validate accountId > 0
+    opt #LightPink Invalid ID
+        Client <-- Handler: Http 400: Account ID must be positive
+    end
 
-Handler -> Service: GetAccount(ctx, accountId)
-activate Service
+    Handler -> Processor: Process(GetAccountRequest)
+    activate Processor
 
-Service -> Service: Validate accountId > 0
+        Processor -> Repo: FindByID(accountId)
+        activate Repo
+            Repo -> SQLite: SELECT * FROM accounts\nWHERE id = ?
+            
+            opt #LightSalmon Database error
+                Processor <-- Repo: Database Error
+                Handler <-- Processor: Error 500
+                Client <-- Handler: Http 500: Internal server error
+            end
+            
+            opt #LightPink Account not found
+                Processor <-- Repo: nil (not found)
+                Handler <-- Processor: Error: not found
+                Client <-- Handler: Http 404: Account not found
+            end
+            
+            Processor <-- Repo: Account entity
+        deactivate Repo
 
-Service -> Repo: FindByID(ctx, accountId)
-activate Repo
-Repo -> DB: SELECT * FROM accounts\nWHERE id = ?
-DB --> Repo: account or nil
-Repo --> Service: account or nil
-deactivate Repo
+        Handler <-- Processor: GetAccountResponse
+    deactivate Processor
 
-alt Account not found
-    Service --> Handler: error: not found
-    Handler --> Router: 404 Not Found
-    Router --> Client: {"error": "account not found"}
-end
+    Handler -> Handler: Encode JSON response
 
-Service --> Handler: account
-deactivate Service
+    Client <-- Handler: Http 200: Account details
 
-Handler -> Handler: Encode JSON response
-Handler --> Router: 200 OK + account
 deactivate Handler
 
-Router --> Client: 200 OK\n{"account_id": 1, "document_number": "12345678900"}
-deactivate Router
+note over Client
+    Success Response (200):
+    {
+        "account_id": 1,
+        "document_number": "12345678900",
+        "created_at": "2025-11-21T10:00:00Z"
+    }
+end note
 
 @enduml

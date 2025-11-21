@@ -1,110 +1,144 @@
 @startuml create-transaction-sequence
-!theme plain
-title POST /api/v1/transactions - Create Transaction Flow (with Auto Amount Normalization)
+footer Simple Banking API - Hexagonal Architecture
+title <size:20>POST /api/v1/transactions - Create Transaction (Auto Normalization)</size>
+
+autonumber
 
 actor Client
-participant "Chi Router" as Router
-participant "Transaction\nHandler" as Handler
-participant "Transaction\nService" as Service
-participant "Account\nRepository" as AccRepo
-participant "OperationType\nRepository" as OpRepo
-participant "Transaction\nRepository" as TxRepo
-database "SQLite\nDatabase" as DB
 
-Client -> Router: POST /api/v1/transactions\n{"account_id": 1,\n"operation_type_id": 1,\n"amount": 50.0}
-activate Router
+box Simple Banking API #lightblue
+    participant "CreateTransactionHandler" as Handler
+    participant "CreateTransactionProcessor" as Processor
+    participant "AccountRepository" as AccRepo
+    participant "OperationTypeRepository" as OpRepo
+    participant "TransactionRepository" as TxRepo
+    database SQLite
+end box
 
-Router -> Handler: CreateTransaction(request)
+Client -> Handler: [POST] /api/v1/transactions
+note right
+    Headers: Idempotency-Key (optional)
+    Body: {
+        "account_id": 1,
+        "operation_type_id": 1,
+        "amount": 50.0
+    }
+end note
+
 activate Handler
 
-Handler -> Handler: Decode JSON body
-Handler -> Service: CreateTransaction(ctx, accountID, operationTypeID, amount)
-activate Service
+    Handler -> Handler: Check Idempotency-Key
+    opt #LightCyan Request already processed
+        Client <-- Handler: Http 200: Cached response
+    end
 
-' Validate Account
-Service -> AccRepo: FindByID(ctx, accountID)
-activate AccRepo
-AccRepo -> DB: SELECT * FROM accounts WHERE id = ?
-DB --> AccRepo: account or nil
-AccRepo --> Service: account or nil
-deactivate AccRepo
+    Handler -> Handler: Decode JSON body
+    opt #LightPink Invalid JSON
+        Client <-- Handler: Http 400: Invalid request body
+    end
 
-alt Account not found
-    Service --> Handler: error: account not found
-    Handler --> Router: 404 Not Found
-    Router --> Client: {"error": "account not found"}
-end
+    Handler -> Handler: Validate input
+    note right
+        Rules:
+        - account_id > 0
+        - operation_type_id: 1-4
+        - amount != 0
+    end note
+    
+    opt #LightPink Validation error
+        Client <-- Handler: Http 400: Validation failed
+    end
 
-' Validate Operation Type
-Service -> OpRepo: FindByID(ctx, operationTypeID)
-activate OpRepo
-OpRepo -> DB: SELECT * FROM operation_types WHERE id = ?
-DB --> OpRepo: operation type or nil
-OpRepo --> Service: operation type or nil
-deactivate OpRepo
+    Handler -> Processor: Process(CreateTransactionRequest)
+    activate Processor
 
-alt Invalid operation type
-    Service --> Handler: error: invalid operation type
-    Handler --> Router: 400 Bad Request
-    Router --> Client: {"error": "invalid operation type"}
-end
+        Processor -> AccRepo: FindByID(account_id)
+        activate AccRepo
+            AccRepo -> SQLite: SELECT * FROM accounts\nWHERE id = ?
+            
+            opt #LightSalmon Database error
+                Processor <-- AccRepo: Database Error
+                Handler <-- Processor: Error 500
+                Client <-- Handler: Http 500: Internal server error
+            end
+            
+            opt #LightPink Account not found
+                Processor <-- AccRepo: nil (not found)
+                Handler <-- Processor: Error: not found
+                Client <-- Handler: Http 404: Account not found
+            end
+            
+            Processor <-- AccRepo: Account entity
+        deactivate AccRepo
 
-' Create and Validate Transaction
-Service -> Service: Create Transaction entity
-Service -> Service: Validate()
-note right
-  Validation rules:
-  - account_id > 0
-  - operation_type_id: 1-4
-  - amount != 0
-end note
+        Processor -> OpRepo: FindByID(operation_type_id)
+        activate OpRepo
+            OpRepo -> SQLite: SELECT * FROM operation_types\nWHERE id = ?
+            
+            opt #LightSalmon Database error
+                Processor <-- OpRepo: Database Error
+                Handler <-- Processor: Error 500
+                Client <-- Handler: Http 500: Internal server error
+            end
+            
+            opt #LightPink Invalid operation type
+                Processor <-- OpRepo: nil (not found)
+                Handler <-- Processor: Error: invalid type
+                Client <-- Handler: Http 400: Invalid operation type
+            end
+            
+            Processor <-- OpRepo: OperationType entity
+        deactivate OpRepo
 
-alt Validation fails
-    Service --> Handler: validation error
-    Handler --> Router: 400 Bad Request
-    Router --> Client: {"error": "validation error"}
-end
+        Processor -> Processor: ✨ Normalize Amount
+        note right
+            **Auto Normalization:**
+            
+            If Debit (1,2,3):
+              amount = -|amount|
+            
+            If Credit (4):
+              amount = |amount|
+            
+            Example:
+            Purchase 50.0 → -50.0 ✅
+        end note
 
-' ✨ AUTOMATIC AMOUNT NORMALIZATION ✨
-Service -> Service: NormalizeAmount(operationType)
-note right Service
-  **Amount Normalization Logic:**
-  
-  If operation is Debit (Purchase/Withdrawal):
-    amount = -|amount|
-  
-  If operation is Credit (Credit Voucher):
-    amount = |amount|
-  
-  Example: 
-  - Purchase with 50.0 → -50.0
-  - Credit with -100 → 100.0
-end note
+        Processor -> Processor: Create Transaction entity
 
-Service -> TxRepo: Create(ctx, transaction)
-activate TxRepo
-TxRepo -> DB: INSERT INTO transactions\n(account_id, operation_type_id,\namount, event_date)\nVALUES (?, ?, ?, NOW())
-note right
-  Amount is stored with
-  correct sign based on
-  operation type!
-end note
-DB --> TxRepo: transaction with ID
-TxRepo --> Service: created transaction
-deactivate TxRepo
+        Processor -> TxRepo: Create(transaction)
+        activate TxRepo
+            TxRepo -> SQLite: INSERT INTO transactions\n(account_id, operation_type_id,\namount, event_date)\nVALUES (?, ?, ?, NOW())
+            note right: Amount stored with\ncorrect sign!
+            
+            opt #LightSalmon Insert error
+                Processor <-- TxRepo: Database Error
+                Handler <-- Processor: Error 500
+                Client <-- Handler: Http 500: Failed to create transaction
+            end
+            
+            Processor <-- TxRepo: Transaction with ID
+        deactivate TxRepo
 
-Service --> Handler: created transaction
-deactivate Service
+        Handler <-- Processor: CreateTransactionResponse
+    deactivate Processor
 
-Handler -> Handler: Encode JSON response
-Handler --> Router: 201 Created + transaction
+    Handler -> Handler: Cache response if Idempotency-Key
+    Handler -> Handler: Encode JSON response
+
+    Client <-- Handler: Http 201: Transaction created
+
 deactivate Handler
 
-Router --> Client: 201 Created\n{"transaction_id": 1,\n"account_id": 1,\n"operation_type_id": 1,\n"amount": -50.0}
-note right
-  Notice: amount was
-  auto-converted to -50.0!
+note over Client
+    Success Response (201):
+    {
+        "transaction_id": 1,
+        "account_id": 1,
+        "operation_type_id": 1,
+        "amount": -50.0,  ← Auto-normalized!
+        "event_date": "2025-11-21T10:00:00Z"
+    }
 end note
-deactivate Router
 
 @enduml

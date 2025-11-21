@@ -1,66 +1,94 @@
 @startuml create-account-sequence
-!theme plain
-title POST /api/v1/accounts - Create Account Flow
+footer Simple Banking API - Hexagonal Architecture
+title <size:20>POST /api/v1/accounts - Create Account</size>
+
+autonumber
 
 actor Client
-participant "Chi Router" as Router
-participant "Account\nHandler" as Handler
-participant "Account\nService" as Service
-participant "Account\nRepository" as Repo
-database "SQLite\nDatabase" as DB
 
-Client -> Router: POST /api/v1/accounts\n{"document_number": "12345678900"}
-activate Router
+box Simple Banking API #lightblue
+    participant "CreateAccountHandler" as Handler
+    participant "CreateAccountProcessor" as Processor
+    participant "AccountRepository" as Repo
+    database SQLite
+end box
 
-Router -> Handler: CreateAccount(request)
+Client -> Handler: [POST] /api/v1/accounts
+note right: {"document_number": "12345678900"}
+
 activate Handler
 
-Handler -> Handler: Decode JSON body
-Handler -> Service: CreateAccount(ctx, documentNumber)
-activate Service
+    Handler -> Handler: Decode JSON body
+    opt #LightPink Invalid JSON
+        Client <-- Handler: Http 400: Invalid request body
+    end
 
-Service -> Service: Create Account entity
-Service -> Service: Validate()
-note right
-  Validation rules:
-  - document_number required
-  - min length: 11 chars
-end note
+    Handler -> Handler: Validate document_number
+    note right
+        Rules:
+        - Required field
+        - Min length: 11 chars
+        - Max length: 14 chars
+    end note
+    
+    opt #LightPink Validation error
+        Client <-- Handler: Http 400: Validation failed
+    end
 
-alt Validation fails
-    Service --> Handler: validation error
-    Handler --> Router: 400 Bad Request
-    Router --> Client: {"error": "validation error"}
-end
+    Handler -> Processor: Process(CreateAccountRequest)
+    activate Processor
 
-Service -> Repo: FindByDocumentNumber(ctx, documentNumber)
-activate Repo
-Repo -> DB: SELECT * FROM accounts\nWHERE document_number = ?
-DB --> Repo: result
-Repo --> Service: existing account or nil
-deactivate Repo
+        Processor -> Repo: FindByDocumentNumber(document_number)
+        activate Repo
+            Repo -> SQLite: SELECT * FROM accounts\nWHERE document_number = ?
+            
+            opt #LightSalmon Database error
+                Processor <-- Repo: Database Error
+                Handler <-- Processor: Error 500
+                Client <-- Handler: Http 500: Internal server error
+            end
+            
+            opt #LightPink Account already exists
+                Processor <-- Repo: Existing account found
+                Handler <-- Processor: Error: duplicate
+                Client <-- Handler: Http 409: Account already exists
+            end
+            
+            Processor <-- Repo: nil (not found)
+        deactivate Repo
 
-alt Account already exists
-    Service --> Handler: error: duplicate
-    Handler --> Router: 409 Conflict
-    Router --> Client: {"error": "account already exists"}
-end
+        Processor -> Processor: Create Account entity
+        note right: Set created_at timestamp
 
-Service -> Repo: Create(ctx, account)
-activate Repo
-Repo -> DB: INSERT INTO accounts\n(document_number)\nVALUES (?)
-DB --> Repo: account with ID
-Repo --> Service: created account
-deactivate Repo
+        Processor -> Repo: Create(account)
+        activate Repo
+            Repo -> SQLite: INSERT INTO accounts\n(document_number, created_at)\nVALUES (?, ?)
+            
+            opt #LightSalmon Insert error
+                Processor <-- Repo: Database Error
+                Handler <-- Processor: Error 500
+                Client <-- Handler: Http 500: Failed to create account
+            end
+            
+            Processor <-- Repo: Account with ID
+        deactivate Repo
 
-Service --> Handler: created account
-deactivate Service
+        Handler <-- Processor: CreateAccountResponse
+    deactivate Processor
 
-Handler -> Handler: Encode JSON response
-Handler --> Router: 201 Created + account
+    Handler -> Handler: Encode JSON response
+
+    Client <-- Handler: Http 201: Account created
+
 deactivate Handler
 
-Router --> Client: 201 Created\n{"account_id": 1, "document_number": "12345678900"}
-deactivate Router
+note over Client
+    Success Response (201):
+    {
+        "account_id": 1,
+        "document_number": "12345678900",
+        "created_at": "2025-11-21T10:00:00Z"
+    }
+end note
 
 @enduml

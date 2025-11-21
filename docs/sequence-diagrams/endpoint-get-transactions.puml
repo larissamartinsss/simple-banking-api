@@ -1,93 +1,125 @@
 @startuml Get Transactions Endpoint Flow
+footer Simple Banking API - Hexagonal Architecture
+title <size:20>GET /api/v1/accounts/:accountId/transactions - Get Transactions (Paginated)</size>
 
-title GET /api/v1/accounts/:accountId/transactions - Get Account Transactions (Paginated)
+autonumber
 
 actor Client
-participant "GetTransactionsHandler" as Handler
-participant "GetTransactionsProcessor" as Processor
-participant "AccountRepository" as AccRepo
-participant "TransactionRepository" as TxRepo
-database SQLite
 
-== Request Validation ==
-Client -> Handler: GET /api/v1/accounts/1/transactions?limit=50&offset=0
+box Simple Banking API #lightblue
+    participant "GetTransactionsHandler" as Handler
+    participant "GetTransactionsProcessor" as Processor
+    participant "AccountRepository" as AccRepo
+    participant "TransactionRepository" as TxRepo
+    database SQLite
+end box
+
+Client -> Handler: [GET] /api/v1/accounts/{id}/transactions?limit=50&offset=0
+
 activate Handler
 
-Handler -> Handler: Parse accountId from URL
-Handler -> Handler: Parse limit and offset\nfrom query parameters
-Handler -> Handler: Validate accountId > 0
-Handler -> Handler: Apply default limit=50, offset=0\nif not provided
-Handler -> Handler: Validate limit <= 100
+    Handler -> Handler: Extract accountId from URL
+    note right: chi.URLParam(r, "accountId")
+    
+    Handler -> Handler: Parse accountId to int64
+    opt #LightPink Invalid format
+        Client <-- Handler: Http 400: Invalid account ID format
+    end
 
-== Business Logic ==
-Handler -> Processor: Process(GetTransactionsRequest)
-activate Processor
+    Handler -> Handler: Validate accountId > 0
+    opt #LightPink Invalid ID
+        Client <-- Handler: Http 400: Account ID must be positive
+    end
 
-Processor -> AccRepo: FindByID(accountId)
-activate AccRepo
-AccRepo -> SQLite: SELECT * FROM accounts\nWHERE id = ?
-SQLite --> AccRepo: Account row
-AccRepo --> Processor: Account entity
-deactivate AccRepo
+    Handler -> Handler: Parse query parameters
+    note right
+        - limit (default: 50, max: 100)
+        - offset (default: 0)
+    end note
+    
+    opt #LightPink Invalid limit/offset
+        Client <-- Handler: Http 400: Invalid pagination parameters
+    end
 
-alt Account Not Found
-    Processor --> Handler: Error: account not found
-    Handler --> Client: 404 Not Found
-else Account Exists
-    Processor -> TxRepo: FindByAccountIDPaginated(accountId, limit, offset)
-    activate TxRepo
-    
-    TxRepo -> SQLite: SELECT * FROM transactions\nWHERE account_id = ?\nORDER BY event_date DESC\nLIMIT ? OFFSET ?
-    SQLite --> TxRepo: Transaction rows
-    
-    TxRepo -> TxRepo: Map rows to\nTransaction entities
-    TxRepo --> Processor: []Transaction
-    deactivate TxRepo
-    
-    Processor -> TxRepo: CountByAccountID(accountId)
-    activate TxRepo
-    TxRepo -> SQLite: SELECT COUNT(*)\nFROM transactions\nWHERE account_id = ?
-    SQLite --> TxRepo: Total count
-    TxRepo --> Processor: total
-    deactivate TxRepo
-    
-    Processor -> Processor: Calculate total_pages\n= ceil(total / limit)
-    
-    Processor --> Handler: GetTransactionsResponse\n(transactions + pagination)
+    Handler -> Processor: Process(GetTransactionsRequest)
+    activate Processor
+
+        Processor -> AccRepo: FindByID(accountId)
+        activate AccRepo
+            AccRepo -> SQLite: SELECT * FROM accounts\nWHERE id = ?
+            
+            opt #LightSalmon Database error
+                Processor <-- AccRepo: Database Error
+                Handler <-- Processor: Error 500
+                Client <-- Handler: Http 500: Internal server error
+            end
+            
+            opt #LightPink Account not found
+                Processor <-- AccRepo: nil (not found)
+                Handler <-- Processor: Error: not found
+                Client <-- Handler: Http 404: Account not found
+            end
+            
+            Processor <-- AccRepo: Account entity
+        deactivate AccRepo
+
+        Processor -> TxRepo: FindByAccountIDPaginated(accountId, limit, offset)
+        activate TxRepo
+            TxRepo -> SQLite: SELECT * FROM transactions\nWHERE account_id = ?\nORDER BY event_date DESC\nLIMIT ? OFFSET ?
+            
+            opt #LightSalmon Database error
+                Processor <-- TxRepo: Database Error
+                Handler <-- Processor: Error 500
+                Client <-- Handler: Http 500: Internal server error
+            end
+            
+            Processor <-- TxRepo: []Transaction
+        deactivate TxRepo
+
+        Processor -> TxRepo: CountByAccountID(accountId)
+        activate TxRepo
+            TxRepo -> SQLite: SELECT COUNT(*)\nFROM transactions\nWHERE account_id = ?
+            
+            opt #LightSalmon Database error
+                Processor <-- TxRepo: Database Error
+                Handler <-- Processor: Error 500
+                Client <-- Handler: Http 500: Internal server error
+            end
+            
+            Processor <-- TxRepo: total count
+        deactivate TxRepo
+
+        Processor -> Processor: Calculate pagination
+        note right: total_pages = ceil(total / limit)
+
+        Handler <-- Processor: GetTransactionsResponse
     deactivate Processor
-    
-    Handler -> Handler: Marshal to JSON
-    Handler --> Client: 200 OK\n{\n  "transactions": [...],\n  "pagination": {\n    "limit": 50,\n    "offset": 0,\n    "total": 150,\n    "total_pages": 3\n  }\n}
-end
+
+    Handler -> Handler: Encode JSON response
+
+    Client <-- Handler: Http 200: Transactions with pagination
 
 deactivate Handler
 
-== Response Format ==
-note right of Client
-  Success Response (200 OK):
-  {
-    "transactions": [
-      {
-        "transaction_id": 1,
-        "account_id": 1,
-        "operation_type_id": 4,
-        "amount": 123.45,
-        "event_date": "2025-11-20T10:00:00Z"
-      },
-      ...
-    ],
-    "pagination": {
-      "limit": 50,
-      "offset": 0,
-      "total": 150,
-      "total_pages": 3
+note over Client
+    Success Response (200):
+    {
+        "transactions": [
+            {
+                "transaction_id": 1,
+                "account_id": 1,
+                "operation_type_id": 4,
+                "amount": 123.45,
+                "event_date": "2025-11-21T10:00:00Z"
+            }
+        ],
+        "pagination": {
+            "limit": 50,
+            "offset": 0,
+            "total": 150,
+            "total_pages": 3
+        }
     }
-  }
-  
-  Error Responses:
-  - 400 Bad Request: Invalid accountId/limit/offset
-  - 404 Not Found: Account not found
-  - 500 Internal Server Error: Database error
 end note
 
 @enduml
