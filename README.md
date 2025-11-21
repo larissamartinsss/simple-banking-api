@@ -331,7 +331,7 @@ simple-banking-api/
 │   └── api/
 │       ├── main.go              # Application entry point
 │       ├── config.go            # Configuration loading
-│       └── server.go            # Application setup & DI
+│       └── server.go            # Application setup & Dependency Injection (DI)
 ├── internal/
 │   ├── core/                    # Business Logic (Domain)
 │   │   ├── domain/              # Domain entities & DTOs
