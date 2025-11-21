@@ -11,14 +11,18 @@ skinparam rectangle {
 title Simple Banking API - Hexagonal Architecture
 
 package "HTTP Layer" {
-    rectangle "Account Handler" <<handler>> as AH
-    rectangle "Transaction Handler" <<handler>> as TH
+    rectangle "Create Account Handler" <<handler>> as CAH
+    rectangle "Get Account Handler" <<handler>> as GAH
+    rectangle "Create Transaction Handler" <<handler>> as CTH
+    rectangle "Get Transactions Handler" <<handler>> as GTH
     rectangle "Chi Router" <<handler>> as Router
 }
 
 package "Business Logic (Core)" {
-    rectangle "Account Service" <<service>> as AS
-    rectangle "Transaction Service" <<service>> as TS
+    rectangle "Create Account Processor" <<service>> as CAP
+    rectangle "Get Account Processor" <<service>> as GAP
+    rectangle "Create Transaction Processor" <<service>> as CTP
+    rectangle "Get Transactions Processor" <<service>> as GTP
     
     interface "Account Repository Port" as ARP
     interface "Transaction Repository Port" as TRP
@@ -32,17 +36,24 @@ package "Data Layer (Infrastructure)" {
     database "SQLite Database" as DB
 }
 
-' HTTP to Services
-Router --> AH
-Router --> TH
-AH --> AS : uses
-TH --> TS : uses
+' HTTP to Processors
+Router --> CAH
+Router --> GAH
+Router --> CTH
+Router --> GTH
+CAH --> CAP : uses
+GAH --> GAP : uses
+CTH --> CTP : uses
+GTH --> GTP : uses
 
-' Services to Ports
-AS --> ARP : depends on
-TS --> TRP : depends on
-TS --> ARP : depends on
-TS --> ORP : depends on
+' Processors to Ports
+CAP --> ARP : depends on
+GAP --> ARP : depends on
+CTP --> TRP : depends on
+CTP --> ARP : depends on
+CTP --> ORP : depends on
+GTP --> TRP : depends on
+GTP --> ARP : depends on
 
 ' Ports to Implementations
 ARP <|.. AR : implements
@@ -59,15 +70,23 @@ note right of Router
   - POST /api/v1/accounts
   - GET /api/v1/accounts/:id
   - POST /api/v1/transactions
-  - GET /api/v1/transactions/:id
+  - GET /api/v1/accounts/:id/transactions
 end note
 
-note right of TS
+note right of CTP
   Business Logic:
   - Validates input
   - Normalizes amount
     (auto-converts sign)
   - Orchestrates repos
+end note
+
+note right of GTP
+  Pagination Logic:
+  - Validates accountId
+  - Applies limit/offset
+  - Calculates total pages
+  - Returns paginated results
 end note
 
 @enduml

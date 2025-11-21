@@ -12,6 +12,7 @@ A straightforward, flexible, and maintainable RESTful service for managing accou
 - ✅ **RESTful API** with proper HTTP semantics
 - ✅ **Hexagonal Architecture** (Ports & Adapters)
 - ✅ **Automatic Amount Normalization** (smart transaction sign conversion)
+- ✅ **Pagination Support** for transaction lists
 - ✅ **SQLite Database** with migration system
 - ✅ **Docker Support** for easy deployment
 - ✅ **Comprehensive Validation** with clear error messages
@@ -80,6 +81,7 @@ GET /health
 | Method | Endpoint | Description | Status Code |
 |--------|----------|-------------|-------------|
 | POST | `/api/v1/transactions` | Create a new transaction | 201 Created |
+| GET | `/api/v1/accounts/:accountId/transactions` | Get account transactions (paginated) | 200 OK |
 
 ---
 
@@ -148,6 +150,51 @@ curl -X POST http://localhost:8080/api/v1/transactions \
   "event_date": "2025-11-16T14:37:03Z"
 }
 ```
+
+---
+
+### 4. Get Account Transactions (Paginated)
+
+**Request:**
+```bash
+# Get first 50 transactions (default)
+curl -X GET http://localhost:8080/api/v1/accounts/1/transactions
+
+# Get with custom pagination
+curl -X GET "http://localhost:8080/api/v1/accounts/1/transactions?limit=10&offset=20"
+```
+
+**Response (200 OK):**
+```json
+{
+  "transactions": [
+    {
+      "transaction_id": 1,
+      "account_id": 1,
+      "operation_type_id": 4,
+      "amount": 123.45,
+      "event_date": "2025-11-16T14:37:03Z"
+    },
+    {
+      "transaction_id": 2,
+      "account_id": 1,
+      "operation_type_id": 1,
+      "amount": -50.00,
+      "event_date": "2025-11-16T15:20:11Z"
+    }
+  ],
+  "pagination": {
+    "limit": 50,
+    "offset": 0,
+    "total": 2,
+    "total_pages": 1
+  }
+}
+```
+
+**Query Parameters:**
+- `limit` (optional): Number of items per page (default: 50, max: 100)
+- `offset` (optional): Number of items to skip (default: 0)
 
 ---
 
@@ -304,13 +351,12 @@ simple-banking-api/
 
 ### Diagrams
 
-View the PlantUML diagrams in the `docs/` folder:
+View the PlantUML diagrams in the `docs/sequence-diagrams/` folder:
 - `architecture.puml` - Overall system architecture
-- `database-schema.puml` - Database ER diagram
-- `repository-layer.puml` - Repository pattern implementation
 - `endpoint-create-account.puml` - Create account flow
 - `endpoint-get-account.puml` - Get account flow
 - `endpoint-create-transaction.puml` - Create transaction flow (with normalization)
+- `endpoint-get-transactions.puml` - Get account transactions flow (with pagination)
 
 ### Current Implementation
 
@@ -318,16 +364,19 @@ View the PlantUML diagrams in the `docs/` folder:
 - ✅ POST `/api/v1/accounts` - Create account
 - ✅ GET `/api/v1/accounts/:accountId` - Get account by ID
 - ✅ POST `/api/v1/transactions` - Create transaction with automatic amount normalization
+- ✅ GET `/api/v1/accounts/:accountId/transactions` - Get account transactions with pagination
 
 **Processors:**
 - `create_account_processor.go` - Handles account creation
 - `get_account_processor.go` - Handles account retrieval
 - `create_transaction_processor.go` - Handles transaction creation with amount normalization
+- `get_transactions_processor.go` - Handles paginated transaction retrieval
 
 **Handlers:**
 - `create_account_handler.go` - Validates and delegates account creation
 - `get_account_handler.go` - Validates and delegates account retrieval
 - `create_transaction_handler.go` - Validates and delegates transaction creation
+- `get_transactions_handler.go` - Validates and delegates paginated transaction retrieval
 
 ---
 
@@ -419,7 +468,6 @@ The architecture is designed to easily accommodate:
 - ✅ Add database JOINs (SQL queries are modular)
 - ✅ Add new endpoints (handler pattern)
 - ✅ Add authentication/authorization
-- ✅ Add balance calculation endpoint
 - ✅ Add pagination
 - ✅ Add filtering and sorting
 - ✅ Switch to PostgreSQL (implement new adapter)

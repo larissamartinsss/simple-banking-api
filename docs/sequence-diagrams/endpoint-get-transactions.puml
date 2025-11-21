@@ -1,0 +1,93 @@
+@startuml Get Transactions Endpoint Flow
+
+title GET /api/v1/accounts/:accountId/transactions - Get Account Transactions (Paginated)
+
+actor Client
+participant "GetTransactionsHandler" as Handler
+participant "GetTransactionsProcessor" as Processor
+participant "AccountRepository" as AccRepo
+participant "TransactionRepository" as TxRepo
+database SQLite
+
+== Request Validation ==
+Client -> Handler: GET /api/v1/accounts/1/transactions?limit=50&offset=0
+activate Handler
+
+Handler -> Handler: Parse accountId from URL
+Handler -> Handler: Parse limit and offset\nfrom query parameters
+Handler -> Handler: Validate accountId > 0
+Handler -> Handler: Apply default limit=50, offset=0\nif not provided
+Handler -> Handler: Validate limit <= 100
+
+== Business Logic ==
+Handler -> Processor: Process(GetTransactionsRequest)
+activate Processor
+
+Processor -> AccRepo: FindByID(accountId)
+activate AccRepo
+AccRepo -> SQLite: SELECT * FROM accounts\nWHERE id = ?
+SQLite --> AccRepo: Account row
+AccRepo --> Processor: Account entity
+deactivate AccRepo
+
+alt Account Not Found
+    Processor --> Handler: Error: account not found
+    Handler --> Client: 404 Not Found
+else Account Exists
+    Processor -> TxRepo: FindByAccountIDPaginated(accountId, limit, offset)
+    activate TxRepo
+    
+    TxRepo -> SQLite: SELECT * FROM transactions\nWHERE account_id = ?\nORDER BY event_date DESC\nLIMIT ? OFFSET ?
+    SQLite --> TxRepo: Transaction rows
+    
+    TxRepo -> TxRepo: Map rows to\nTransaction entities
+    TxRepo --> Processor: []Transaction
+    deactivate TxRepo
+    
+    Processor -> TxRepo: CountByAccountID(accountId)
+    activate TxRepo
+    TxRepo -> SQLite: SELECT COUNT(*)\nFROM transactions\nWHERE account_id = ?
+    SQLite --> TxRepo: Total count
+    TxRepo --> Processor: total
+    deactivate TxRepo
+    
+    Processor -> Processor: Calculate total_pages\n= ceil(total / limit)
+    
+    Processor --> Handler: GetTransactionsResponse\n(transactions + pagination)
+    deactivate Processor
+    
+    Handler -> Handler: Marshal to JSON
+    Handler --> Client: 200 OK\n{\n  "transactions": [...],\n  "pagination": {\n    "limit": 50,\n    "offset": 0,\n    "total": 150,\n    "total_pages": 3\n  }\n}
+end
+
+deactivate Handler
+
+== Response Format ==
+note right of Client
+  Success Response (200 OK):
+  {
+    "transactions": [
+      {
+        "transaction_id": 1,
+        "account_id": 1,
+        "operation_type_id": 4,
+        "amount": 123.45,
+        "event_date": "2025-11-20T10:00:00Z"
+      },
+      ...
+    ],
+    "pagination": {
+      "limit": 50,
+      "offset": 0,
+      "total": 150,
+      "total_pages": 3
+    }
+  }
+  
+  Error Responses:
+  - 400 Bad Request: Invalid accountId/limit/offset
+  - 404 Not Found: Account not found
+  - 500 Internal Server Error: Database error
+end note
+
+@enduml
