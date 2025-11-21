@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"database/sql"
-	"github.com/larissamartinsss/simple-banking-api/internal/adapters/repository/accounts"
-	"github.com/larissamartinsss/simple-banking-api/internal/adapters/repository/operationtype"
-	"github.com/larissamartinsss/simple-banking-api/internal/adapters/repository/transactions"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/larissamartinsss/simple-banking-api/internal/adapters/repository/accounts"
+	"github.com/larissamartinsss/simple-banking-api/internal/adapters/repository/operationtype"
+	"github.com/larissamartinsss/simple-banking-api/internal/adapters/repository/transactions"
 
 	"github.com/larissamartinsss/simple-banking-api/infra/database"
 	"github.com/larissamartinsss/simple-banking-api/internal/core/services/processors"
@@ -131,9 +132,10 @@ func (app *Application) Start() error {
 	go func() {
 		app.logger.Printf("🌐 Server starting on %s", app.config.ServerAddress)
 		app.logger.Println("📋 Available endpoints:")
-		app.logger.Println("   POST   /api/v1/accounts")
-		app.logger.Println("   GET    /api/v1/accounts/{accountId}")
-		app.logger.Println("   POST   /api/v1/transactions")
+		app.logger.Println("   POST   /v1/accounts")
+		app.logger.Println("   GET    /v1/accounts/{accountId}")
+		app.logger.Println("   POST   /v1/transactions")
+		app.logger.Println("   GET    /v1/accounts/{accountId}/transactions")
 		app.logger.Println("   GET    /health")
 		app.logger.Println("")
 		app.logger.Println("✨ Server is ready to accept requests!")

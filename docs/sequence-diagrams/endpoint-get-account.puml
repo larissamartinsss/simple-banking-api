@@ -1,6 +1,6 @@
 @startuml get-account-sequence
 footer Simple Banking API - Hexagonal Architecture
-title <size:20>GET /api/v1/accounts/:accountId - Get Account</size>
+title <size:20>GET /v1/accounts/:accountId - Get Account</size>
 
 autonumber
 
@@ -13,7 +13,7 @@ box Simple Banking API #lightblue
     database SQLite
 end box
 
-Client -> Handler: [GET] /api/v1/accounts/{id}
+Client -> Handler: [GET] /v1/accounts/{id}
 
 activate Handler
 

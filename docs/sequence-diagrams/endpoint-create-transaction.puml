@@ -1,6 +1,6 @@
 @startuml create-transaction-sequence
 footer Simple Banking API - Hexagonal Architecture
-title <size:20>POST /api/v1/transactions - Create Transaction (Auto Normalization)</size>
+title <size:20>POST /v1/transactions - Create Transaction (Auto Normalization)</size>
 
 autonumber
 
@@ -15,9 +15,9 @@ box Simple Banking API #lightblue
     database SQLite
 end box
 
-Client -> Handler: [POST] /api/v1/transactions
+Client -> Handler: [POST] /v1/transactions
 note right
-    Headers: Idempotency-Key (optional)
+    Headers: Idempotency-Key (required)
     Body: {
         "account_id": 1,
         "operation_type_id": 1,
@@ -27,7 +27,12 @@ end note
 
 activate Handler
 
-    Handler -> Handler: Check Idempotency-Key
+    Handler -> Handler: Validate Idempotency-Key header
+    opt #LightPink Missing Idempotency-Key
+        Client <-- Handler: Http 400: Idempotency-Key header is required
+    end
+
+    Handler -> Handler: Check Idempotency-Key cache
     opt #LightCyan Request already processed
         Client <-- Handler: Http 200: Cached response
     end

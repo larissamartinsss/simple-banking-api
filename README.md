@@ -12,7 +12,7 @@ A straightforward, flexible, and maintainable RESTful service for managing accou
 - ✅ **RESTful API** with proper HTTP semantics
 - ✅ **Hexagonal Architecture** (Ports & Adapters)
 - ✅ **Automatic Amount Normalization** (smart transaction sign conversion)
-- ✅ **Idempotency Support** (prevents duplicate transaction processing)
+- ✅ **Idempotency Support** (required Idempotency-Key header prevents duplicate transactions)
 - ✅ **Pagination Support** for transaction lists
 - ✅ **SQLite Database** with migration system
 - ✅ **Docker Support** for easy deployment
@@ -74,15 +74,15 @@ GET /health
 
 | Method | Endpoint | Description | Status Code |
 |--------|----------|-------------|-------------|
-| POST | `/api/v1/accounts` | Create a new account | 201 Created |
-| GET | `/api/v1/accounts/:accountId` | Get account by ID | 200 OK |
+| POST | `/v1/accounts` | Create a new account | 201 Created |
+| GET | `/v1/accounts/:accountId` | Get account by ID | 200 OK |
 
 ### Transactions
 
 | Method | Endpoint | Description | Status Code |
 |--------|----------|-------------|-------------|
-| POST | `/api/v1/transactions` | Create a new transaction | 201 Created |
-| GET | `/api/v1/accounts/:accountId/transactions` | Get account transactions (paginated) | 200 OK |
+| POST | `/v1/transactions` | Create a new transaction | 201 Created |
+| GET | `/v1/accounts/:accountId/transactions` | Get account transactions (paginated) | 200 OK |
 
 ---
 
@@ -92,7 +92,7 @@ GET /health
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8080/api/v1/accounts \
+curl -X POST http://localhost:8080/v1/accounts \
   -H "Content-Type: application/json" \
   -d '{
     "document_number": "12345678900"
@@ -114,7 +114,7 @@ curl -X POST http://localhost:8080/api/v1/accounts \
 
 **Request:**
 ```bash
-curl -X GET http://localhost:8080/api/v1/accounts/1
+curl -X GET http://localhost:8080/v1/accounts/1
 ```
 
 **Response (200 OK):**
@@ -132,7 +132,7 @@ curl -X GET http://localhost:8080/api/v1/accounts/1
 
 **Request:**
 ```bash
-curl -X POST http://localhost:8080/api/v1/transactions \
+curl -X POST http://localhost:8080/v1/transactions \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: unique-key-123" \
   -d '{
@@ -153,7 +153,7 @@ curl -X POST http://localhost:8080/api/v1/transactions \
 }
 ```
 
-**Note:** The `Idempotency-Key` header (optional) prevents duplicate processing if the same request is sent multiple times.
+**Note:** The `Idempotency-Key` header is **required** and prevents duplicate processing if the same request is sent multiple times with the same key.
 
 ---
 
@@ -162,10 +162,10 @@ curl -X POST http://localhost:8080/api/v1/transactions \
 **Request:**
 ```bash
 # Get first 50 transactions (default)
-curl -X GET http://localhost:8080/api/v1/accounts/1/transactions
+curl -X GET http://localhost:8080/v1/accounts/1/transactions
 
 # Get with custom pagination
-curl -X GET "http://localhost:8080/api/v1/accounts/1/transactions?limit=10&offset=20"
+curl -X GET "http://localhost:8080/v1/accounts/1/transactions?limit=10&offset=20"
 ```
 
 **Response (200 OK):**
@@ -368,10 +368,10 @@ View the PlantUML diagrams in the `docs/sequence-diagrams/` folder:
 ### Current Implementation
 
 **Implemented Endpoints:**
-- ✅ POST `/api/v1/accounts` - Create account
-- ✅ GET `/api/v1/accounts/:accountId` - Get account by ID
-- ✅ POST `/api/v1/transactions` - Create transaction with automatic amount normalization
-- ✅ GET `/api/v1/accounts/:accountId/transactions` - Get account transactions with pagination
+- ✅ POST `/v1/accounts` - Create account
+- ✅ GET `/v1/accounts/:accountId` - Get account by ID
+- ✅ POST `/v1/transactions` - Create transaction with automatic amount normalization
+- ✅ GET `/v1/accounts/:accountId/transactions` - Get account transactions with pagination
 
 **Processors:**
 - `create_account_processor.go` - Handles account creation

@@ -67,10 +67,10 @@ OR --> DB
 
 note right of Router
   RESTful endpoints:
-  - POST /api/v1/accounts
-  - GET /api/v1/accounts/:id
-  - POST /api/v1/transactions
-  - GET /api/v1/accounts/:id/transactions
+  - POST /v1/accounts
+  - GET /v1/accounts/:id
+  - POST /v1/transactions
+  - GET /v1/accounts/:id/transactions
 end note
 
 note right of CTP

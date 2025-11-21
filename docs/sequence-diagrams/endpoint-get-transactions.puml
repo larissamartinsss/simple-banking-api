@@ -1,6 +1,6 @@
 @startuml Get Transactions Endpoint Flow
 footer Simple Banking API - Hexagonal Architecture
-title <size:20>GET /api/v1/accounts/:accountId/transactions - Get Transactions (Paginated)</size>
+title <size:20>GET /v1/accounts/:accountId/transactions - Get Transactions (Paginated)</size>
 
 autonumber
 
@@ -14,7 +14,7 @@ box Simple Banking API #lightblue
     database SQLite
 end box
 
-Client -> Handler: [GET] /api/v1/accounts/{id}/transactions?limit=50&offset=0
+Client -> Handler: [GET] /v1/accounts/{id}/transactions?limit=50&offset=0
 
 activate Handler
 
