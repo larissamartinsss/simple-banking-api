@@ -12,6 +12,7 @@ A straightforward, flexible, and maintainable RESTful service for managing accou
 - ✅ **RESTful API** with proper HTTP semantics
 - ✅ **Hexagonal Architecture** (Ports & Adapters)
 - ✅ **Automatic Amount Normalization** (smart transaction sign conversion)
+- ✅ **Idempotency Support** (prevents duplicate transaction processing)
 - ✅ **Pagination Support** for transaction lists
 - ✅ **SQLite Database** with migration system
 - ✅ **Docker Support** for easy deployment
@@ -133,6 +134,7 @@ curl -X GET http://localhost:8080/api/v1/accounts/1
 ```bash
 curl -X POST http://localhost:8080/api/v1/transactions \
   -H "Content-Type: application/json" \
+  -H "Idempotency-Key: unique-key-123" \
   -d '{
     "account_id": 1,
     "operation_type_id": 4,
@@ -150,6 +152,8 @@ curl -X POST http://localhost:8080/api/v1/transactions \
   "event_date": "2025-11-16T14:37:03Z"
 }
 ```
+
+**Note:** The `Idempotency-Key` header (optional) prevents duplicate processing if the same request is sent multiple times.
 
 ---
 
@@ -325,7 +329,9 @@ This project follows **Hexagonal Architecture** (Ports & Adapters) with a clean 
 simple-banking-api/
 ├── cmd/
 │   └── api/
-│       └── main.go              # Application entry point
+│       ├── main.go              # Application entry point
+│       ├── config.go            # Configuration loading
+│       └── server.go            # Application setup & DI
 ├── internal/
 │   ├── core/                    # Business Logic (Domain)
 │   │   ├── domain/              # Domain entities & DTOs
@@ -336,6 +342,7 @@ simple-banking-api/
 │   │   └── repository/          # Repository implementations
 │   └── server/                  # HTTP Layer
 │       ├── handlers/            # HTTP handlers (lightweight)
+│       ├── middleware/          # Middleware (idempotency, etc)
 │       └── router.go            # Route configuration
 ├── infra/
 │   └── database/                # Infrastructure
@@ -387,6 +394,18 @@ View the PlantUML diagrams in the `docs/sequence-diagrams/` folder:
 - **Database:** SQLite (modernc.org/sqlite - pure Go)
 - **Architecture:** Hexagonal (Ports & Adapters)
 - **Containerization:** Docker & Docker Compose
+
+### Database Considerations
+
+**SQLite is used for simplicity and portability:**
+- ✅ Zero configuration, embedded database
+- ✅ Perfect for development and testing
+- ✅ Easy deployment (single file)
+
+**Production Considerations:**
+- ⚠️ **Write Lock Limitation**: SQLite uses database-level write locking, which can limit concurrent write operations
+- ⚠️ **Scalability**: For high-concurrency production environments, consider PostgreSQL or MySQL
+- ✅ **Easy Migration**: The hexagonal architecture makes switching databases straightforward (just implement a new repository adapter)
 
 ---
 
