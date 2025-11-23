@@ -95,6 +95,30 @@ func TestCreateAccountHandler_Handle(t *testing.T) {
 			},
 		},
 		{
+			name: "document number with letters",
+			requestBody: map[string]string{
+				"document_number": "invalid_doc",
+			},
+			setupMock: func(mockProc *mocks.MockCreateAccountProcessorInterface) {
+			},
+			expectedStatus: http.StatusBadRequest,
+			validateResp: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert.Contains(t, w.Body.String(), "document_number must contain only digits")
+			},
+		},
+		{
+			name: "document number with special characters",
+			requestBody: map[string]string{
+				"document_number": "123.456.789-00",
+			},
+			setupMock: func(mockProc *mocks.MockCreateAccountProcessorInterface) {
+			},
+			expectedStatus: http.StatusBadRequest,
+			validateResp: func(t *testing.T, w *httptest.ResponseRecorder) {
+				assert.Contains(t, w.Body.String(), "document_number must contain only digits")
+			},
+		},
+		{
 			name: "duplicate document number",
 			requestBody: map[string]string{
 				"document_number": "12345678900",

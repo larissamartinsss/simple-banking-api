@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"regexp"
 	"time"
 )
 
@@ -25,6 +26,15 @@ func (a *Account) Validate() error {
 
 	if len(a.DocumentNumber) < 11 || len(a.DocumentNumber) > 14 {
 		return errors.New("document_number must have between 11 and 14 characters")
+	}
+
+	// Validate that document_number contains only digits
+	matched, err := regexp.MatchString(`^\d+$`, a.DocumentNumber)
+	if err != nil {
+		return errors.New("failed to validate document_number format")
+	}
+	if !matched {
+		return errors.New("document_number must contain only digits")
 	}
 
 	return nil

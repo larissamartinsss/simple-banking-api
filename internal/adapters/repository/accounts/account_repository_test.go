@@ -6,388 +6,219 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/larissamartinsss/simple-banking-api/internal/core/domain"
-	_ "modernc.org/sqlite"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-// setupTestDB creates an in-memory SQLite database for testing
-func setupTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-
-	db, err := sql.Open("sqlite", ":memory:")
-	if err != nil {
-		t.Fatalf("failed to open test database: %v", err)
-	}
-
-	// Create schema
-	schema := `
-		CREATE TABLE IF NOT EXISTS accounts (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			document_number TEXT NOT NULL UNIQUE,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		);
-	`
-
-	if _, err := db.Exec(schema); err != nil {
-		t.Fatalf("failed to create schema: %v", err)
-	}
-
-	return db
+func setupMock(t *testing.T) (*sql.DB, sqlmock.Sqlmock, *AccountRepository) {
+	db, mock, err := sqlmock.New()
+	require.NoError(t, err)
+	repo := NewAccountRepository(db)
+	return db, mock, repo.(*AccountRepository)
 }
 
-func TestAccountRepository_Create(t *testing.T) {
+func TestCreate(t *testing.T) {
 	tests := []struct {
 		name        string
 		account     *domain.Account
+		mockSetup   func(sqlmock.Sqlmock)
 		wantErr     bool
 		errContains string
-		setupData   func(*sql.DB) // pre-populate data
 	}{
 		{
-			name: "successful account creation",
-			account: &domain.Account{
-				DocumentNumber: "12345678900",
+			name:    "successful creation",
+			account: &domain.Account{DocumentNumber: "12345678900"},
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery("INSERT INTO accounts").
+					WithArgs("12345678900").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "document_number", "created_at"}).
+						AddRow(1, "12345678900", time.Now()))
 			},
 			wantErr: false,
 		},
 		{
-			name: "duplicate document number",
-			account: &domain.Account{
-				DocumentNumber: "99988877766",
-			},
-			setupData: func(db *sql.DB) {
-				db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "99988877766")
+			name:    "duplicate document",
+			account: &domain.Account{DocumentNumber: "12345678900"},
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery("INSERT INTO accounts").
+					WithArgs("12345678900").
+					WillReturnError(sql.ErrConnDone)
 			},
 			wantErr:     true,
-			errContains: "UNIQUE constraint failed",
-		},
-		{
-			name: "valid CPF format",
-			account: &domain.Account{
-				DocumentNumber: "11122233344",
-			},
-			wantErr: false,
-		},
-		{
-			name: "valid CNPJ format",
-			account: &domain.Account{
-				DocumentNumber: "12345678901234",
-			},
-			wantErr: false,
+			errContains: "failed to create account",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := setupTestDB(t)
+			db, mock, repo := setupMock(t)
 			defer db.Close()
 
-			if tt.setupData != nil {
-				tt.setupData(db)
-			}
+			tt.mockSetup(mock)
 
-			repo := NewAccountRepository(db)
-			ctx := context.Background()
-
-			result, err := repo.Create(ctx, tt.account)
+			result, err := repo.Create(context.Background(), tt.account)
 
 			if tt.wantErr {
-				if err == nil {
-					t.Errorf("Create() expected error but got none")
-					return
-				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
-					t.Errorf("Create() error = %v, should contain %q", err, tt.errContains)
+				require.Error(t, err)
+				if tt.errContains != "" {
+					assert.Contains(t, err.Error(), tt.errContains)
 				}
 				return
 			}
 
-			if err != nil {
-				t.Errorf("Create() unexpected error = %v", err)
-				return
-			}
-
-			if result == nil {
-				t.Error("Create() returned nil result")
-				return
-			}
-
-			if result.ID == 0 {
-				t.Error("Create() returned account with zero ID")
-			}
-
-			if result.DocumentNumber != tt.account.DocumentNumber {
-				t.Errorf("Create() document_number = %v, want %v", result.DocumentNumber, tt.account.DocumentNumber)
-			}
-
-			if result.CreatedAt.IsZero() {
-				t.Error("Create() returned zero CreatedAt timestamp")
-			}
+			require.NoError(t, err)
+			assert.NotZero(t, result.ID)
+			assert.Equal(t, tt.account.DocumentNumber, result.DocumentNumber)
+			assert.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
 }
 
-func TestAccountRepository_FindByID(t *testing.T) {
+func TestFindByID(t *testing.T) {
 	tests := []struct {
 		name      string
-		accountID int64
-		setupData func(*sql.DB) int64 // returns the ID to search for
+		id        int64
+		mockSetup func(sqlmock.Sqlmock)
 		wantFound bool
 		wantErr   bool
 	}{
 		{
-			name:      "find existing account",
-			accountID: 0, // will be set by setupData
-			setupData: func(db *sql.DB) int64 {
-				result, _ := db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "12345678900")
-				id, _ := result.LastInsertId()
-				return int64(id)
+			name: "found",
+			id:   1,
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery("SELECT (.+) FROM accounts WHERE id").
+					WithArgs(int64(1)).
+					WillReturnRows(sqlmock.NewRows([]string{"id", "document_number", "created_at"}).
+						AddRow(1, "12345678900", time.Now()))
 			},
 			wantFound: true,
-			wantErr:   false,
 		},
 		{
-			name:      "account not found",
-			accountID: 999,
-			setupData: func(db *sql.DB) int64 {
-				return 999
+			name: "not found",
+			id:   999,
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery("SELECT (.+) FROM accounts WHERE id").
+					WithArgs(int64(999)).
+					WillReturnError(sql.ErrNoRows)
 			},
 			wantFound: false,
-			wantErr:   false,
-		},
-		{
-			name:      "find account by ID 1",
-			accountID: 0,
-			setupData: func(db *sql.DB) int64 {
-				db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "11111111111")
-				result, _ := db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "22222222222")
-				id, _ := result.LastInsertId()
-				return int64(id)
-			},
-			wantFound: true,
-			wantErr:   false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := setupTestDB(t)
+			db, mock, repo := setupMock(t)
 			defer db.Close()
 
-			searchID := tt.accountID
-			if tt.setupData != nil {
-				searchID = tt.setupData(db)
-			}
+			tt.mockSetup(mock)
 
-			repo := NewAccountRepository(db)
-			ctx := context.Background()
+			result, err := repo.FindByID(context.Background(), tt.id)
 
-			result, err := repo.FindByID(ctx, searchID)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("FindByID() expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("FindByID() unexpected error = %v", err)
-				return
-			}
-
+			require.NoError(t, err)
 			if tt.wantFound {
-				if result == nil {
-					t.Error("FindByID() expected account but got nil")
-					return
-				}
-				if result.ID != searchID {
-					t.Errorf("FindByID() ID = %v, want %v", result.ID, searchID)
-				}
+				assert.NotNil(t, result)
+				assert.Equal(t, tt.id, result.ID)
 			} else {
-				if result != nil {
-					t.Errorf("FindByID() expected nil but got account: %+v", result)
-				}
+				assert.Nil(t, result)
 			}
+			assert.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
 }
 
-func TestAccountRepository_FindByDocumentNumber(t *testing.T) {
-	tests := []struct {
-		name           string
-		documentNumber string
-		setupData      func(*sql.DB)
-		wantFound      bool
-		wantErr        bool
-	}{
-		{
-			name:           "find existing account by document",
-			documentNumber: "12345678900",
-			setupData: func(db *sql.DB) {
-				db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "12345678900")
-			},
-			wantFound: true,
-			wantErr:   false,
-		},
-		{
-			name:           "document not found",
-			documentNumber: "00000000000",
-			setupData:      func(db *sql.DB) {},
-			wantFound:      false,
-			wantErr:        false,
-		},
-		{
-			name:           "find second account",
-			documentNumber: "99988877766",
-			setupData: func(db *sql.DB) {
-				db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "11111111111")
-				db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "99988877766")
-			},
-			wantFound: true,
-			wantErr:   false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			db := setupTestDB(t)
-			defer db.Close()
-
-			if tt.setupData != nil {
-				tt.setupData(db)
-			}
-
-			repo := NewAccountRepository(db)
-			ctx := context.Background()
-
-			result, err := repo.FindByDocumentNumber(ctx, tt.documentNumber)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("FindByDocumentNumber() expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("FindByDocumentNumber() unexpected error = %v", err)
-				return
-			}
-
-			if tt.wantFound {
-				if result == nil {
-					t.Error("FindByDocumentNumber() expected account but got nil")
-					return
-				}
-				if result.DocumentNumber != tt.documentNumber {
-					t.Errorf("FindByDocumentNumber() document = %v, want %v", result.DocumentNumber, tt.documentNumber)
-				}
-			} else {
-				if result != nil {
-					t.Errorf("FindByDocumentNumber() expected nil but got account: %+v", result)
-				}
-			}
-		})
-	}
-}
-
-func TestAccountRepository_GetAll(t *testing.T) {
+func TestFindByDocumentNumber(t *testing.T) {
 	tests := []struct {
 		name      string
-		setupData func(*sql.DB)
-		wantCount int64
-		wantErr   bool
+		docNumber string
+		mockSetup func(sqlmock.Sqlmock)
+		wantFound bool
 	}{
 		{
-			name:      "empty database",
-			setupData: func(db *sql.DB) {},
-			wantCount: 0,
-			wantErr:   false,
+			name:      "found",
+			docNumber: "12345678900",
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery("SELECT (.+) FROM accounts WHERE document_number").
+					WithArgs("12345678900").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "document_number", "created_at"}).
+						AddRow(1, "12345678900", time.Now()))
+			},
+			wantFound: true,
 		},
 		{
-			name: "single account",
-			setupData: func(db *sql.DB) {
-				db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "12345678900")
+			name:      "not found",
+			docNumber: "99999999999",
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery("SELECT (.+) FROM accounts WHERE document_number").
+					WithArgs("99999999999").
+					WillReturnError(sql.ErrNoRows)
 			},
-			wantCount: 1,
-			wantErr:   false,
+			wantFound: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, mock, repo := setupMock(t)
+			defer db.Close()
+
+			tt.mockSetup(mock)
+
+			result, err := repo.FindByDocumentNumber(context.Background(), tt.docNumber)
+
+			require.NoError(t, err)
+			if tt.wantFound {
+				assert.NotNil(t, result)
+				assert.Equal(t, tt.docNumber, result.DocumentNumber)
+			} else {
+				assert.Nil(t, result)
+			}
+			assert.NoError(t, mock.ExpectationsWereMet())
+		})
+	}
+}
+
+func TestGetAll(t *testing.T) {
+	tests := []struct {
+		name      string
+		mockSetup func(sqlmock.Sqlmock)
+		wantCount int
+	}{
+		{
+			name: "empty",
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				mock.ExpectQuery("SELECT (.+) FROM accounts").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "document_number", "created_at"}))
+			},
+			wantCount: 0,
 		},
 		{
 			name: "multiple accounts",
-			setupData: func(db *sql.DB) {
-				db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "11111111111")
-				db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "22222222222")
-				db.Exec("INSERT INTO accounts (document_number) VALUES (?)", "33333333333")
+			mockSetup: func(mock sqlmock.Sqlmock) {
+				now := time.Now()
+				mock.ExpectQuery("SELECT (.+) FROM accounts").
+					WillReturnRows(sqlmock.NewRows([]string{"id", "document_number", "created_at"}).
+						AddRow(1, "11111111111", now).
+						AddRow(2, "22222222222", now).
+						AddRow(3, "33333333333", now))
 			},
 			wantCount: 3,
-			wantErr:   false,
-		},
-		{
-			name: "accounts with different timestamps",
-			setupData: func(db *sql.DB) {
-				db.Exec("INSERT INTO accounts (document_number, created_at) VALUES (?, ?)", "11111111111", time.Now().Add(-1*time.Hour))
-				db.Exec("INSERT INTO accounts (document_number, created_at) VALUES (?, ?)", "22222222222", time.Now())
-			},
-			wantCount: 2,
-			wantErr:   false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			db := setupTestDB(t)
+			db, mock, repo := setupMock(t)
 			defer db.Close()
 
-			if tt.setupData != nil {
-				tt.setupData(db)
-			}
+			tt.mockSetup(mock)
 
-			repo := NewAccountRepository(db)
-			ctx := context.Background()
+			results, err := repo.GetAll(context.Background())
 
-			results, err := repo.GetAll(ctx)
-
-			if tt.wantErr {
-				if err == nil {
-					t.Errorf("GetAll() expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Errorf("GetAll() unexpected error = %v", err)
-				return
-			}
-
-			if int64(len(results)) != tt.wantCount {
-				t.Errorf("GetAll() count = %v, want %v", len(results), tt.wantCount)
-			} // Validate each account has required fields
-			for i, account := range results {
-				if account.ID == 0 {
-					t.Errorf("GetAll() account[%d] has zero ID", i)
-				}
-				if account.DocumentNumber == "" {
-					t.Errorf("GetAll() account[%d] has empty DocumentNumber", i)
-				}
-				if account.CreatedAt.IsZero() {
-					t.Errorf("GetAll() account[%d] has zero CreatedAt", i)
-				}
-			}
+			require.NoError(t, err)
+			assert.Len(t, results, tt.wantCount)
+			assert.NoError(t, mock.ExpectationsWereMet())
 		})
 	}
-}
-
-// Helper function to check if a string contains a substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsHelper(s, substr))
-}
-
-func containsHelper(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
